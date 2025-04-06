@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -16,6 +17,7 @@ export function LeadDashboard() {
   const [isValidating, setIsValidating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [validationCriteria, setValidationCriteria] = useState('CTO OR VP OR Founder OR Director');
+  const [validationProgress, setValidationProgress] = useState(0);
 
   const highPriorityLeads = leads.filter(lead => lead.priority === 'high');
   const mediumPriorityLeads = leads.filter(lead => lead.priority === 'medium');
@@ -32,40 +34,57 @@ export function LeadDashboard() {
 
   const handleValidateLeads = () => {
     setIsValidating(true);
+    setValidationProgress(0);
     
-    // Simulate API call to validate leads
+    // Simulate API call with progress updates
+    const interval = setInterval(() => {
+      setValidationProgress(prev => {
+        const newProgress = prev + Math.random() * 10;
+        return newProgress >= 100 ? 100 : newProgress;
+      });
+    }, 200);
+    
+    // Simulate AI validation based on job titles
     setTimeout(() => {
+      clearInterval(interval);
       const newLeads = [...leads];
       
-      // This simulates the AI validation based on job titles
-      // In a real app, this would use the OpenAI API
+      // Parse validation criteria for more sophisticated filtering
+      const criteriaRules = validationCriteria
+        .split('OR')
+        .map(rule => rule.trim().toLowerCase());
+      
+      // This simulates the AI validation using the rules
       newLeads.forEach(lead => {
         const title = lead.jobTitle.toLowerCase();
-        if (
-          title.includes('cto') || 
-          title.includes('chief') || 
-          title.includes('vp') || 
-          title.includes('vice president') || 
-          title.includes('founder') || 
-          title.includes('director')
-        ) {
+        
+        // Check for high priority matches (custom criteria)
+        if (criteriaRules.some(rule => title.includes(rule))) {
           lead.priority = 'high';
-        } else if (
+        } 
+        // Check for medium priority
+        else if (
           title.includes('manager') || 
           title.includes('lead') || 
           title.includes('head')
         ) {
           lead.priority = 'medium';
-        } else {
+        } 
+        // Everything else is low priority
+        else {
           lead.priority = 'low';
         }
       });
       
       setLeads(newLeads);
       setIsValidating(false);
+      setValidationProgress(100);
+      
+      const highPriorityCount = newLeads.filter(l => l.priority === 'high').length;
+      const confidence = Math.round((highPriorityCount / newLeads.length) * 100);
       
       toast.success('Leads validated successfully', {
-        description: `Found ${newLeads.filter(l => l.priority === 'high').length} high priority leads.`,
+        description: `Found ${highPriorityCount} high priority leads (${confidence}% confidence).`,
       });
     }, 3000);
   };
@@ -93,9 +112,16 @@ export function LeadDashboard() {
     link.click();
     document.body.removeChild(link);
     
+    const exportType = selectedLeads.length > 0 ? 'selected' : 'all';
+    const highPriorityCount = leadsToExport.filter(l => l.priority === 'high').length;
+    
     toast.success('CSV exported successfully', {
-      description: `Exported ${leadsToExport.length} leads to CSV.`,
+      description: `Exported ${leadsToExport.length} leads to CSV (${highPriorityCount} high priority).`,
     });
+  };
+
+  const handleNavigateToFilter = (priority: Lead['priority']) => {
+    window.location.href = `/leads?priority=${priority}`;
   };
 
   const filteredLeads = leads.filter(lead => 
@@ -112,24 +138,30 @@ export function LeadDashboard() {
           value={leads.length} 
           icon={<Database className="h-5 w-5 text-teal-600" />} 
           description="All collected leads" 
+          onClick={() => {}} 
         />
         <StatCard 
           title="High Priority" 
           value={highPriorityLeads.length} 
           icon={<Check className="h-5 w-5 text-green-600" />} 
           description="Decision makers" 
+          onClick={() => handleNavigateToFilter('high')} 
+          clickable={true}
         />
         <StatCard 
           title="Medium Priority" 
           value={mediumPriorityLeads.length} 
           icon={<Clock className="h-5 w-5 text-blue-600" />} 
           description="Influencers" 
+          onClick={() => handleNavigateToFilter('medium')} 
+          clickable={true}
         />
         <StatCard 
           title="Selected" 
           value={selectedLeads.length} 
           icon={<Users className="h-5 w-5 text-indigo-600" />} 
           description="For export" 
+          onClick={() => {}} 
         />
       </div>
 
@@ -157,8 +189,11 @@ export function LeadDashboard() {
 
               {isValidating && (
                 <div className="space-y-2">
-                  <div className="text-sm">Processing leads...</div>
-                  <Progress value={45} className="h-2" />
+                  <div className="text-sm flex justify-between">
+                    <span>Processing leads...</span>
+                    <span>{Math.round(validationProgress)}%</span>
+                  </div>
+                  <Progress value={validationProgress} className="h-2" />
                 </div>
               )}
 
@@ -188,7 +223,11 @@ export function LeadDashboard() {
                 <FileSpreadsheet className="h-4 w-4" />
                 Export to CSV
               </Button>
-              <Button variant="outline" className="w-full flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center gap-2"
+                onClick={handleExportCSV}
+              >
                 <Download className="h-4 w-4" />
                 Export Selected ({selectedLeads.length})
               </Button>
@@ -256,11 +295,16 @@ interface StatCardProps {
   value: number;
   icon: React.ReactNode;
   description: string;
+  clickable?: boolean;
+  onClick: () => void;
 }
 
-function StatCard({ title, value, icon, description }: StatCardProps) {
+function StatCard({ title, value, icon, description, clickable = false, onClick }: StatCardProps) {
   return (
-    <Card>
+    <Card 
+      className={`${clickable ? 'cursor-pointer transform transition-all hover:scale-105 hover:shadow-md' : ''}`}
+      onClick={clickable ? onClick : undefined}
+    >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon}
