@@ -10,6 +10,7 @@ import { Input } from './ui/input';
 import { mockLeads } from '@/data/mockLeads';
 import { LeadTable } from './LeadTable';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 export function LeadDashboard() {
   const [leads, setLeads] = useState<Lead[]>(mockLeads);
@@ -18,6 +19,7 @@ export function LeadDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [validationCriteria, setValidationCriteria] = useState('CTO OR VP OR Founder OR Director');
   const [validationProgress, setValidationProgress] = useState(0);
+  const navigate = useNavigate();
 
   const highPriorityLeads = leads.filter(lead => lead.priority === 'high');
   const mediumPriorityLeads = leads.filter(lead => lead.priority === 'medium');
@@ -76,7 +78,10 @@ export function LeadDashboard() {
         }
       });
       
+      // Store validated leads
       setLeads(newLeads);
+      localStorage.setItem('storedLeads', JSON.stringify(newLeads));
+      
       setIsValidating(false);
       setValidationProgress(100);
       
@@ -121,7 +126,7 @@ export function LeadDashboard() {
   };
 
   const handleNavigateToFilter = (priority: Lead['priority']) => {
-    window.location.href = `/leads?priority=${priority}`;
+    navigate(`/leads?priority=${priority}`);
   };
 
   const filteredLeads = leads.filter(lead => 
@@ -138,7 +143,8 @@ export function LeadDashboard() {
           value={leads.length} 
           icon={<Database className="h-5 w-5 text-teal-600" />} 
           description="All collected leads" 
-          onClick={() => {}} 
+          onClick={() => navigate('/leads')} 
+          clickable={true}
         />
         <StatCard 
           title="High Priority" 
@@ -218,10 +224,10 @@ export function LeadDashboard() {
               <Button 
                 variant="outline" 
                 className="w-full flex items-center gap-2"
-                onClick={handleExportCSV}
+                onClick={() => navigate('/export')}
               >
                 <FileSpreadsheet className="h-4 w-4" />
-                Export to CSV
+                Configure Export
               </Button>
               <Button 
                 variant="outline" 
@@ -229,7 +235,7 @@ export function LeadDashboard() {
                 onClick={handleExportCSV}
               >
                 <Download className="h-4 w-4" />
-                Export Selected ({selectedLeads.length})
+                Quick Export ({selectedLeads.length > 0 ? selectedLeads.length : 'All'})
               </Button>
             </CardContent>
           </Card>

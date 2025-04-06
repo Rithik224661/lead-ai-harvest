@@ -8,6 +8,8 @@ import { useState } from "react";
 import Index from "./pages/Index";
 import FindLeads from "./pages/FindLeads";
 import Leads from "./pages/Leads";
+import Settings from "./pages/Settings";
+import Export from "./pages/Export";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
             <Route path="/" element={<Index />} />
             <Route path="/search" element={<FindLeads />} />
             <Route path="/leads" element={<Leads />} />
+            <Route path="/export" element={<Export />} />
+            <Route path="/settings" element={<Settings />} />
             {/* Additional routes would go here */}
             <Route path="*" element={<NotFound />} />
           </Routes>
