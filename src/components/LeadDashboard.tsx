@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -9,7 +8,7 @@ import { Check, Clock, Database, Download, FileSpreadsheet, Search, Upload, User
 import { Input } from './ui/input';
 import { mockLeads } from '@/data/mockLeads';
 import { LeadTable } from './LeadTable';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 export function LeadDashboard() {
   const [leads, setLeads] = useState<Lead[]>(mockLeads);
