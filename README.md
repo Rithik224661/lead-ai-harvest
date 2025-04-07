@@ -25,7 +25,7 @@ An AI-powered lead generation and management system that scrapes, validates, and
 
 Sample lead data:
 - [`leads_sample.pdf`](leads_sample.pdf)
-- [`leads_sample1.xlsx`](leads_sample1.xlsx)
+- [`leads_sample1.csv`](leads_sample1.csv)
 
 > **Note:** Replace these with your actual dataset paths if different.
 
