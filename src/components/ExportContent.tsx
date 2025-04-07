@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -7,7 +6,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { toast } from 'sonner';
-import { Download, FileSpreadsheet, FilePdf, FileText, ChevronRight } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, FileArchive, ChevronRight } from 'lucide-react';
 import { Lead } from './LeadCard';
 import { mockLeads } from '@/data/mockLeads';
 
@@ -25,13 +24,11 @@ export function ExportContent() {
   });
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
 
-  // Filter leads by priority
   const filteredLeads = selectedPriority === 'all' 
     ? selectedLeads 
     : selectedLeads.filter(lead => lead.priority === selectedPriority);
 
   const handleExport = () => {
-    // Get fields to export
     const fieldsToExport = Object.entries(selectedFields)
       .filter(([_, isSelected]) => isSelected)
       .map(([field]) => field);
@@ -41,29 +38,22 @@ export function ExportContent() {
       return;
     }
 
-    // Generate CSV headers
     const headers = fieldsToExport.map(field => {
-      // Convert camelCase to Title Case
       return field.replace(/([A-Z])/g, ' $1')
         .replace(/^./, str => str.toUpperCase());
     }).join(',');
 
-    // Generate CSV rows
     const rows = filteredLeads.map(lead => 
       fieldsToExport.map(field => {
         const value = lead[field as keyof Lead];
-        // Wrap values in quotes to handle commas and quotes in the data
         return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : `"${value}"`;
       }).join(',')
     );
 
-    // Combine headers and rows
     const csvContent = [headers, ...rows].join('\n');
 
-    // Create a blob from the CSV content
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     
-    // Create a download link and trigger download
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
@@ -72,7 +62,6 @@ export function ExportContent() {
     link.click();
     document.body.removeChild(link);
 
-    // Show success message
     const highPriorityCount = filteredLeads.filter(l => l.priority === 'high').length;
     toast.success('Export successful', {
       description: `Exported ${filteredLeads.length} leads to ${fileType.toUpperCase()} (${highPriorityCount} high priority)`,
@@ -104,7 +93,7 @@ export function ExportContent() {
                       <FileSpreadsheet className="h-4 w-4" /> Excel
                     </TabsTrigger>
                     <TabsTrigger value="pdf" className="flex gap-2 items-center">
-                      <FilePdf className="h-4 w-4" /> PDF
+                      <FileArchive className="h-4 w-4" /> PDF
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
