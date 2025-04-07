@@ -13,6 +13,7 @@ export interface Lead {
   phone: string | null;
   priority: "high" | "medium" | "low";
   source: string;
+  aiScore?: number; // Added AI score property
 }
 
 interface LeadCardProps {
@@ -27,7 +28,7 @@ export function LeadCard({ lead, onSelect, isSelected }: LeadCardProps) {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg">{lead.name}</CardTitle>
-          <PriorityBadge priority={lead.priority} />
+          <PriorityBadge priority={lead.priority} aiScore={lead.aiScore} />
         </div>
         <CardDescription className="flex items-center gap-1">
           <Briefcase className="h-3.5 w-3.5" />
@@ -67,18 +68,17 @@ export function LeadCard({ lead, onSelect, isSelected }: LeadCardProps) {
   );
 }
 
-function PriorityBadge({ priority }: { priority: Lead["priority"] }) {
+function PriorityBadge({ priority, aiScore }: { priority: Lead["priority"], aiScore?: number }) {
   const variants = {
     high: "bg-green-100 text-green-800 hover:bg-green-100",
     medium: "bg-blue-100 text-blue-800 hover:bg-blue-100",
     low: "bg-gray-100 text-gray-800 hover:bg-gray-100",
   };
 
-  const labels = {
-    high: "High Priority",
-    medium: "Medium Priority",
-    low: "Low Priority",
-  };
+  // Show AI score if available
+  const label = aiScore 
+    ? `${priority.charAt(0).toUpperCase() + priority.slice(1)} (${aiScore}/10)`
+    : `${priority.charAt(0).toUpperCase() + priority.slice(1)} Priority`;
 
-  return <Badge variant="outline" className={variants[priority]}>{labels[priority]}</Badge>;
+  return <Badge variant="outline" className={variants[priority]}>{label}</Badge>;
 }

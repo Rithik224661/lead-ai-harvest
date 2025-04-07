@@ -4,11 +4,12 @@ import { Layout } from "@/components/Layout";
 import { LeadsContent } from "@/components/LeadsContent";
 import { Lead } from "@/components/LeadCard";
 import { mockLeads } from "@/data/mockLeads";
+import { useSearchParams } from 'react-router-dom';
 
 const Leads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const params = new URLSearchParams(window.location.search);
-  const priority = params.get('priority');
+  const [searchParams] = useSearchParams();
+  const priority = searchParams.get('priority');
   
   useEffect(() => {
     // In a real application, this would fetch from an API

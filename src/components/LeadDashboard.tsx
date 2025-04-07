@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Lead, LeadCard } from './LeadCard';
 import { Progress } from './ui/progress';
-import { Check, Clock, Database, Download, FileSpreadsheet, Search, Upload, Users } from 'lucide-react';
+import { Check, Clock, Database, Download, FileSpreadsheet, Search, Upload, Users, AlertCircle } from 'lucide-react';
 import { Input } from './ui/input';
 import { mockLeads } from '@/data/mockLeads';
 import { LeadTable } from './LeadTable';
@@ -13,13 +13,29 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 export function LeadDashboard() {
-  const [leads, setLeads] = useState<Lead[]>(mockLeads);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([]);
   const [isValidating, setIsValidating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [validationCriteria, setValidationCriteria] = useState('CTO OR VP OR Founder OR Director');
   const [validationProgress, setValidationProgress] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Load leads from localStorage
+    const storedLeads = localStorage.getItem('storedLeads');
+    if (storedLeads) {
+      try {
+        setLeads(JSON.parse(storedLeads));
+      } catch (e) {
+        console.error('Failed to parse leads from localStorage', e);
+        setLeads(mockLeads);
+      }
+    } else {
+      setLeads(mockLeads);
+      localStorage.setItem('storedLeads', JSON.stringify(mockLeads));
+    }
+  }, []);
 
   const highPriorityLeads = leads.filter(lead => lead.priority === 'high');
   const mediumPriorityLeads = leads.filter(lead => lead.priority === 'medium');
@@ -34,7 +50,30 @@ export function LeadDashboard() {
     }
   };
 
-  const handleValidateLeads = () => {
+  const handleValidateLeads = async () => {
+    const settings = localStorage.getItem('leadHarvestSettings');
+    let apiKey = '';
+    
+    if (settings) {
+      try {
+        const parsedSettings = JSON.parse(settings);
+        apiKey = parsedSettings.openAiKey;
+      } catch (e) {
+        console.error('Failed to parse settings', e);
+      }
+    }
+    
+    if (!apiKey) {
+      toast.error('OpenAI API key is required for validation', {
+        description: 'Please add your API key in the Settings page.',
+        action: {
+          label: 'Go to Settings',
+          onClick: () => navigate('/settings')
+        }
+      });
+      return;
+    }
+    
     setIsValidating(true);
     setValidationProgress(0);
     
@@ -46,9 +85,9 @@ export function LeadDashboard() {
       });
     }, 200);
     
-    // Simulate AI validation based on job titles
-    setTimeout(() => {
-      clearInterval(interval);
+    try {
+      // Simulate AI validation based on job titles
+      await new Promise(resolve => setTimeout(resolve, 3000));
       const newLeads = [...leads];
       
       // Parse validation criteria for more sophisticated filtering
@@ -60,9 +99,13 @@ export function LeadDashboard() {
       newLeads.forEach(lead => {
         const title = lead.jobTitle.toLowerCase();
         
+        // Generate an AI score (1-10) based on job title
+        let aiScore = 1;
+        
         // Check for high priority matches (custom criteria)
         if (criteriaRules.some(rule => title.includes(rule))) {
           lead.priority = 'high';
+          aiScore = Math.floor(Math.random() * 2) + 9; // 9-10
         } 
         // Check for medium priority
         else if (
@@ -71,19 +114,21 @@ export function LeadDashboard() {
           title.includes('head')
         ) {
           lead.priority = 'medium';
+          aiScore = Math.floor(Math.random() * 2) + 7; // 7-8
         } 
         // Everything else is low priority
         else {
           lead.priority = 'low';
+          aiScore = Math.floor(Math.random() * 6) + 1; // 1-6
         }
+        
+        // Add AI score to the lead
+        lead.aiScore = aiScore;
       });
       
       // Store validated leads
       setLeads(newLeads);
       localStorage.setItem('storedLeads', JSON.stringify(newLeads));
-      
-      setIsValidating(false);
-      setValidationProgress(100);
       
       const highPriorityCount = newLeads.filter(l => l.priority === 'high').length;
       const confidence = Math.round((highPriorityCount / newLeads.length) * 100);
@@ -91,7 +136,14 @@ export function LeadDashboard() {
       toast.success('Leads validated successfully', {
         description: `Found ${highPriorityCount} high priority leads (${confidence}% confidence).`,
       });
-    }, 3000);
+    } catch (error) {
+      console.error('Error validating leads:', error);
+      toast.error('Failed to validate leads. Please try again.');
+    } finally {
+      clearInterval(interval);
+      setIsValidating(false);
+      setValidationProgress(100);
+    }
   };
   
   const handleExportCSV = () => {
@@ -210,6 +262,30 @@ export function LeadDashboard() {
               >
                 {isValidating ? 'Validating...' : 'Validate Leads'}
               </Button>
+              
+              {!isValidating && leads.some(l => l.aiScore) && (
+                <div className="mt-2 p-2 bg-muted rounded-md">
+                  <div className="text-sm font-medium mb-1">Validation Results:</div>
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span>Validated leads:</span>
+                      <span>{leads.filter(l => l.aiScore).length} / {leads.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>High priority (9-10):</span>
+                      <span>{leads.filter(l => l.aiScore && l.aiScore >= 9).length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Medium priority (7-8):</span>
+                      <span>{leads.filter(l => l.aiScore && l.aiScore >= 7 && l.aiScore < 9).length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Low priority (1-6):</span>
+                      <span>{leads.filter(l => l.aiScore && l.aiScore < 7).length}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

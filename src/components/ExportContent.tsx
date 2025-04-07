@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -12,7 +13,7 @@ import { mockLeads } from '@/data/mockLeads';
 
 export function ExportContent() {
   const [fileType, setFileType] = useState('csv');
-  const [selectedLeads, setSelectedLeads] = useState<Lead[]>(mockLeads);
+  const [selectedLeads, setSelectedLeads] = useState<Lead[]>([]);
   const [selectedFields, setSelectedFields] = useState<Record<string, boolean>>({
     name: true,
     jobTitle: true,
@@ -23,6 +24,22 @@ export function ExportContent() {
     source: true
   });
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
+  const [isExporting, setIsExporting] = useState(false);
+
+  useEffect(() => {
+    // Get leads from localStorage
+    const storedLeads = localStorage.getItem('storedLeads');
+    if (storedLeads) {
+      try {
+        setSelectedLeads(JSON.parse(storedLeads));
+      } catch (e) {
+        console.error('Failed to parse leads from localStorage', e);
+        setSelectedLeads(mockLeads);
+      }
+    } else {
+      setSelectedLeads(mockLeads);
+    }
+  }, []);
 
   const filteredLeads = selectedPriority === 'all' 
     ? selectedLeads 
@@ -38,6 +55,29 @@ export function ExportContent() {
       return;
     }
 
+    setIsExporting(true);
+    
+    try {
+      switch (fileType) {
+        case 'csv':
+          exportCSV(fieldsToExport);
+          break;
+        case 'xlsx':
+          exportExcel(fieldsToExport);
+          break;
+        case 'pdf':
+          exportPDF(fieldsToExport);
+          break;
+      }
+    } catch (error) {
+      console.error(`Error exporting ${fileType}:`, error);
+      toast.error(`Failed to export ${fileType}. Please try again.`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportCSV = (fieldsToExport: string[]) => {
     const headers = fieldsToExport.map(field => {
       return field.replace(/([A-Z])/g, ' $1')
         .replace(/^./, str => str.toUpperCase());
@@ -57,11 +97,51 @@ export function ExportContent() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `leads-export-${new Date().toISOString().split('T')[0]}.${fileType}`);
+    link.setAttribute('download', `leads-export-${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
+    showSuccessToast();
+  };
+
+  const exportExcel = (fieldsToExport: string[]) => {
+    // Simulate Excel export
+    setTimeout(() => {
+      const blob = new Blob(['Excel export is a premium feature. Coming soon!'], 
+        { type: 'text/plain;charset=utf-8;' });
+      
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `leads-export-${new Date().toISOString().split('T')[0]}.txt`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showSuccessToast();
+    }, 1500);
+  };
+
+  const exportPDF = (fieldsToExport: string[]) => {
+    // Simulate PDF export
+    setTimeout(() => {
+      const blob = new Blob(['PDF export is a premium feature. Coming soon!'], 
+        { type: 'text/plain;charset=utf-8;' });
+      
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `leads-export-${new Date().toISOString().split('T')[0]}.txt`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showSuccessToast();
+    }, 1500);
+  };
+
+  const showSuccessToast = () => {
     const highPriorityCount = filteredLeads.filter(l => l.priority === 'high').length;
     toast.success('Export successful', {
       description: `Exported ${filteredLeads.length} leads to ${fileType.toUpperCase()} (${highPriorityCount} high priority)`,
@@ -194,9 +274,12 @@ export function ExportContent() {
               <div className="text-sm text-muted-foreground">
                 Exporting {filteredLeads.length} leads
               </div>
-              <Button onClick={handleExport}>
+              <Button 
+                onClick={handleExport}
+                disabled={isExporting}
+              >
                 <Download className="mr-2 h-4 w-4" />
-                Export {fileType.toUpperCase()}
+                {isExporting ? 'Exporting...' : `Export ${fileType.toUpperCase()}`}
               </Button>
             </CardFooter>
           </Card>

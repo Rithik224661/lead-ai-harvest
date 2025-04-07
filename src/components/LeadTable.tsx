@@ -17,10 +17,9 @@ export function LeadTable({ leads, selectedLeads, onSelectLead }: LeadTableProps
     low: "bg-gray-100 text-gray-800 hover:bg-gray-100"
   };
   
-  const priorityLabels = {
-    high: "High",
-    medium: "Medium",
-    low: "Low"
+  const getPriorityLabel = (lead: Lead) => {
+    const base = lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1);
+    return lead.aiScore ? `${base} (${lead.aiScore}/10)` : base;
   };
   
   return (
@@ -46,7 +45,7 @@ export function LeadTable({ leads, selectedLeads, onSelectLead }: LeadTableProps
             </TableRow>
           ) : (
             leads.map((lead) => (
-              <TableRow key={lead.id}>
+              <TableRow key={lead.id} className="group">
                 <TableCell>
                   <Checkbox 
                     checked={selectedLeads.some(l => l.id === lead.id)}
@@ -59,7 +58,7 @@ export function LeadTable({ leads, selectedLeads, onSelectLead }: LeadTableProps
                 <TableCell>{lead.email || "-"}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={priorityClasses[lead.priority]}>
-                    {priorityLabels[lead.priority]}
+                    {getPriorityLabel(lead)}
                   </Badge>
                 </TableCell>
                 <TableCell>{lead.source}</TableCell>

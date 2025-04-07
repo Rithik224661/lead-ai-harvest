@@ -8,7 +8,7 @@ import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
-import { Database, Key, RefreshCcw, RotateCcw, Save, Shield } from 'lucide-react';
+import { AlertCircle, CheckCircle, Database, Key, RefreshCcw, RotateCcw, Save, Shield } from 'lucide-react';
 
 interface Settings {
   openAiKey: string;
@@ -26,6 +26,8 @@ export function SettingsContent() {
     respectRobotsTxt: true,
     defaultSource: 'linkedin'
   });
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [keyIsValid, setKeyIsValid] = useState<boolean | null>(null);
 
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -43,6 +45,39 @@ export function SettingsContent() {
     // Save settings to localStorage
     localStorage.setItem('leadHarvestSettings', JSON.stringify(settings));
     toast.success('Settings saved successfully');
+  };
+  
+  const verifyApiKey = async () => {
+    if (!settings.openAiKey || settings.openAiKey.trim() === '') {
+      toast.error('Please enter an API key');
+      return;
+    }
+    
+    setIsVerifying(true);
+    setKeyIsValid(null);
+    
+    try {
+      // Simulate API key verification (in a real app, this would call OpenAI's API)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // For demo purposes, any key starting with "sk-" is considered valid
+      const isValid = settings.openAiKey.startsWith('sk-');
+      
+      setKeyIsValid(isValid);
+      
+      if (isValid) {
+        toast.success('API key verified successfully');
+        handleSaveSettings();
+      } else {
+        toast.error('Invalid API key format');
+      }
+    } catch (error) {
+      console.error('Error verifying API key:', error);
+      toast.error('Failed to verify API key');
+      setKeyIsValid(false);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -67,13 +102,41 @@ export function SettingsContent() {
                 onChange={(e) => setSettings({...settings, openAiKey: e.target.value})}
                 placeholder="sk-..."
               />
-              <Button variant="outline" size="icon">
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => {
+                  const input = document.getElementById('openai-key') as HTMLInputElement;
+                  if (input) {
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                  }
+                }}
+              >
                 <Key className="h-4 w-4" />
               </Button>
             </div>
+            {keyIsValid === true && (
+              <div className="flex items-center text-green-600 text-sm mt-1">
+                <CheckCircle className="h-4 w-4 mr-1" />
+                API key verified
+              </div>
+            )}
+            {keyIsValid === false && (
+              <div className="flex items-center text-red-600 text-sm mt-1">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                Invalid API key
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               Required for AI-powered lead validation and classification
             </p>
+            <Button 
+              onClick={verifyApiKey} 
+              disabled={isVerifying}
+              className="mt-2"
+            >
+              {isVerifying ? 'Verifying...' : 'Verify & Save API Key'}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -167,7 +230,9 @@ export function SettingsContent() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={() => {
+              window.location.href = '/export';
+            }}>
               <Database className="mr-2 h-4 w-4" />
               Export All Data
             </Button>

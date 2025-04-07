@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -22,6 +22,13 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
   const [filterPriority, setFilterPriority] = useState(priorityFilter || 'all');
   const [filterSource, setFilterSource] = useState('all');
   const navigate = useNavigate();
+  
+  // Update filter when URL parameter changes
+  useEffect(() => {
+    if (priorityFilter) {
+      setFilterPriority(priorityFilter);
+    }
+  }, [priorityFilter]);
 
   // Filter leads based on search term and filters
   const filteredLeads = leads.filter(lead => {
@@ -147,7 +154,15 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
             <div className="flex gap-2">
               <Select 
                 value={filterPriority} 
-                onValueChange={setFilterPriority}
+                onValueChange={(value) => {
+                  setFilterPriority(value);
+                  // Update the URL if the filter changes
+                  if (value === 'all') {
+                    navigate('/leads');
+                  } else {
+                    navigate(`/leads?priority=${value}`);
+                  }
+                }}
               >
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Priority" />
@@ -191,6 +206,7 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
                     setSearchTerm('');
                     setFilterPriority('all');
                     setFilterSource('all');
+                    navigate('/leads');
                   }}
                 >
                   Clear all filters
