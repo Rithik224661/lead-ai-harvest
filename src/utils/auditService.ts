@@ -60,10 +60,13 @@ class AuditService {
    */
   public logScrape(source: string, proxies: boolean, proxyUsed?: string, leadsCount?: number) {
     return this.addLog('SCRAPE', {
-      source,
+      source: source || 'Unknown Source',
       proxy_used: proxies ? proxyUsed : 'none',
       leads_count: leadsCount,
-      details: { proxies_enabled: proxies }
+      details: { 
+        proxies_enabled: proxies,
+        scrape_time: new Date().toISOString()
+      }
     });
   }
   
@@ -72,6 +75,7 @@ class AuditService {
    */
   public logValidation(leadsCount: number, criteria: string) {
     return this.addLog('VALIDATE', {
+      source: 'Lead Validation',
       leads_count: leadsCount,
       details: { 
         criteria,
@@ -85,10 +89,39 @@ class AuditService {
    */
   public logExport(format: string, leadsCount: number) {
     return this.addLog('EXPORT', {
+      source: `${format} Export`,
       leads_count: leadsCount,
       details: { 
         format,
         export_time: new Date().toISOString()
+      }
+    });
+  }
+
+  /**
+   * Log delete activity
+   */
+  public logDelete(leadsCount: number, reason?: string) {
+    return this.addLog('DELETE', {
+      source: 'Lead Deletion',
+      leads_count: leadsCount,
+      details: {
+        reason: reason || 'Manual deletion',
+        delete_time: new Date().toISOString()
+      }
+    });
+  }
+
+  /**
+   * Log modify activity
+   */
+  public logModify(leadsCount: number, fieldsChanged: string[]) {
+    return this.addLog('MODIFY', {
+      source: 'Lead Modification',
+      leads_count: leadsCount,
+      details: {
+        fields_changed: fieldsChanged.join(', '),
+        modify_time: new Date().toISOString()
       }
     });
   }

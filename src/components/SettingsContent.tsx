@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Separator } from './ui/separator';
 import { Slider } from './ui/slider';
 import { Check, KeyRound, Lightbulb, RefreshCw, Shield, UserRound } from 'lucide-react';
+import { auditService } from '@/utils/auditService';
 
 export function SettingsContent() {
   // API keys
@@ -42,7 +43,39 @@ export function SettingsContent() {
         console.error('Failed to parse settings', e);
       }
     }
+
+    // Apply dark mode from settings on load
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
+    // Apply animations setting
+    if (!animationsEnabled) {
+      document.documentElement.classList.add('no-animations');
+    } else {
+      document.documentElement.classList.remove('no-animations');
+    }
   }, []);
+
+  // Apply dark mode when the state changes
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  // Apply animations setting when it changes
+  useEffect(() => {
+    if (!animationsEnabled) {
+      document.documentElement.classList.add('no-animations');
+    } else {
+      document.documentElement.classList.remove('no-animations');
+    }
+  }, [animationsEnabled]);
 
   const saveSettings = () => {
     const settings = {
@@ -93,6 +126,51 @@ export function SettingsContent() {
 
   const handleToggleChange = (setter: React.Dispatch<React.SetStateAction<boolean>>, value: boolean) => {
     setter(value);
+  };
+
+  // Scraping simulation
+  const simulateScraping = () => {
+    const source = 'LinkedIn';
+    auditService.logScrape(source, useProxies, useProxies ? '192.168.1.1:8080' : undefined, 25);
+    toast.success(`Scraping simulated from ${source} with ${useProxies ? 'proxies' : 'no proxies'}`);
+  };
+
+  // Validation simulation
+  const simulateValidation = () => {
+    auditService.logValidation(15, 'Email & Company');
+    toast.success('Validation simulated for 15 leads');
+  };
+
+  // Export simulation
+  const simulateExport = () => {
+    auditService.logExport('CSV', 10);
+    toast.success('Export simulated for 10 leads');
+  };
+
+  // Delete simulation
+  const simulateDelete = () => {
+    auditService.addLog('DELETE', {
+      leads_count: 5,
+      source: 'Manual selection',
+      details: {
+        reason: 'Duplicates',
+        delete_time: new Date().toISOString()
+      }
+    });
+    toast.success('Delete operation simulated for 5 leads');
+  };
+
+  // Modify simulation
+  const simulateModify = () => {
+    auditService.addLog('MODIFY', {
+      leads_count: 3,
+      source: 'Bulk edit',
+      details: {
+        fields_changed: ['priority', 'notes'],
+        modify_time: new Date().toISOString()
+      }
+    });
+    toast.success('Modify operation simulated for 3 leads');
   };
 
   return (
@@ -197,6 +275,15 @@ export function SettingsContent() {
                   Time between requests to avoid rate limiting
                 </p>
               </div>
+
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={simulateScraping}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Test Scraping (Audit Log)
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -271,6 +358,37 @@ export function SettingsContent() {
           </CardContent>
         </Card>
       </div>
+      
+      <Card className="transition-all duration-300 hover:shadow-md">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Audit Log Actions</CardTitle>
+              <CardDescription>Test functionality for audit logging</CardDescription>
+            </div>
+            <Shield className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Button variant="outline" onClick={simulateScraping}>
+              Test Scraping
+            </Button>
+            <Button variant="outline" onClick={simulateValidation}>
+              Test Validation
+            </Button>
+            <Button variant="outline" onClick={simulateExport}>
+              Test Export
+            </Button>
+            <Button variant="outline" onClick={simulateDelete}>
+              Test Delete
+            </Button>
+            <Button variant="outline" onClick={simulateModify} className="col-span-2 md:col-span-4">
+              Test Modify
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
       
       <div className="flex justify-end mt-6">
         <Button onClick={saveSettings} className="px-8 transition-all duration-300 hover:scale-105">
