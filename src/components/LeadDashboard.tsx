@@ -5,12 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Lead, LeadCard } from './LeadCard';
 import { Progress } from './ui/progress';
-import { Check, Clock, Database, Download, FileSpreadsheet, Search, Upload, Users, AlertCircle } from 'lucide-react';
+import { Check, Clock, Database, Download, FileSpreadsheet, Search, Users, AlertCircle, Brain } from 'lucide-react';
 import { Input } from './ui/input';
 import { mockLeads } from '@/data/mockLeads';
 import { LeadTable } from './LeadTable';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { validateLeadsWithAI } from '@/services/aiLeadService';
 
 export function LeadDashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -86,52 +87,15 @@ export function LeadDashboard() {
     }, 200);
     
     try {
-      // Simulate AI validation based on job titles
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      const newLeads = [...leads];
-      
-      // Parse validation criteria for more sophisticated filtering
-      const criteriaRules = validationCriteria
-        .split('OR')
-        .map(rule => rule.trim().toLowerCase());
-      
-      // This simulates the AI validation using the rules
-      newLeads.forEach(lead => {
-        const title = lead.jobTitle.toLowerCase();
-        
-        // Generate an AI score (1-10) based on job title
-        let aiScore = 1;
-        
-        // Check for high priority matches (custom criteria)
-        if (criteriaRules.some(rule => title.includes(rule))) {
-          lead.priority = 'high';
-          aiScore = Math.floor(Math.random() * 2) + 9; // 9-10
-        } 
-        // Check for medium priority
-        else if (
-          title.includes('manager') || 
-          title.includes('lead') || 
-          title.includes('head')
-        ) {
-          lead.priority = 'medium';
-          aiScore = Math.floor(Math.random() * 2) + 7; // 7-8
-        } 
-        // Everything else is low priority
-        else {
-          lead.priority = 'low';
-          aiScore = Math.floor(Math.random() * 6) + 1; // 1-6
-        }
-        
-        // Add AI score to the lead
-        lead.aiScore = aiScore;
-      });
+      // Use the AI service to validate leads
+      const validatedLeads = await validateLeadsWithAI(leads, validationCriteria);
       
       // Store validated leads
-      setLeads(newLeads);
-      localStorage.setItem('storedLeads', JSON.stringify(newLeads));
+      setLeads(validatedLeads);
+      localStorage.setItem('storedLeads', JSON.stringify(validatedLeads));
       
-      const highPriorityCount = newLeads.filter(l => l.priority === 'high').length;
-      const confidence = Math.round((highPriorityCount / newLeads.length) * 100);
+      const highPriorityCount = validatedLeads.filter(l => l.priority === 'high').length;
+      const confidence = Math.round((highPriorityCount / validatedLeads.length) * 100);
       
       toast.success('Leads validated successfully', {
         description: `Found ${highPriorityCount} high priority leads (${confidence}% confidence).`,
@@ -197,6 +161,7 @@ export function LeadDashboard() {
           description="All collected leads" 
           onClick={() => navigate('/leads')} 
           clickable={true}
+          className="transition-all duration-300 hover:scale-105"
         />
         <StatCard 
           title="High Priority" 
@@ -205,6 +170,7 @@ export function LeadDashboard() {
           description="Decision makers" 
           onClick={() => handleNavigateToFilter('high')} 
           clickable={true}
+          className="transition-all duration-300 hover:scale-105"
         />
         <StatCard 
           title="Medium Priority" 
@@ -213,6 +179,7 @@ export function LeadDashboard() {
           description="Influencers" 
           onClick={() => handleNavigateToFilter('medium')} 
           clickable={true}
+          className="transition-all duration-300 hover:scale-105"
         />
         <StatCard 
           title="Selected" 
@@ -220,14 +187,18 @@ export function LeadDashboard() {
           icon={<Users className="h-5 w-5 text-indigo-600" />} 
           description="For export" 
           onClick={() => {}} 
+          className="transition-all duration-300"
         />
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="w-full md:w-1/3 space-y-4">
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-md">
             <CardHeader>
-              <CardTitle>AI Validation</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>AI Validation</CardTitle>
+                <Brain className="h-5 w-5 text-primary animate-pulse" />
+              </div>
               <CardDescription>
                 Use AI to prioritize your leads based on job titles and other criteria
               </CardDescription>
@@ -239,6 +210,7 @@ export function LeadDashboard() {
                   placeholder="e.g., CTO OR VP OR Founder" 
                   value={validationCriteria}
                   onChange={(e) => setValidationCriteria(e.target.value)}
+                  className="transition-all duration-300"
                 />
                 <p className="text-xs text-muted-foreground">
                   Use keywords like "CTO", "VP", "Founder", etc. separated by OR to indicate high priority roles
@@ -258,13 +230,13 @@ export function LeadDashboard() {
               <Button 
                 onClick={handleValidateLeads}
                 disabled={isValidating}
-                className="w-full"
+                className="w-full transition-all duration-300 hover:scale-105"
               >
                 {isValidating ? 'Validating...' : 'Validate Leads'}
               </Button>
               
               {!isValidating && leads.some(l => l.aiScore) && (
-                <div className="mt-2 p-2 bg-muted rounded-md">
+                <div className="mt-2 p-2 bg-muted rounded-md transition-all duration-300">
                   <div className="text-sm font-medium mb-1">Validation Results:</div>
                   <div className="text-xs space-y-1">
                     <div className="flex justify-between">
@@ -289,7 +261,7 @@ export function LeadDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-md">
             <CardHeader>
               <CardTitle>Export Options</CardTitle>
               <CardDescription>
@@ -299,7 +271,7 @@ export function LeadDashboard() {
             <CardContent className="space-y-4">
               <Button 
                 variant="outline" 
-                className="w-full flex items-center gap-2"
+                className="w-full flex items-center gap-2 transition-all duration-300 hover:bg-muted"
                 onClick={() => navigate('/export')}
               >
                 <FileSpreadsheet className="h-4 w-4" />
@@ -307,7 +279,7 @@ export function LeadDashboard() {
               </Button>
               <Button 
                 variant="outline" 
-                className="w-full flex items-center gap-2"
+                className="w-full flex items-center gap-2 transition-all duration-300 hover:bg-muted"
                 onClick={handleExportCSV}
               >
                 <Download className="h-4 w-4" />
@@ -318,7 +290,7 @@ export function LeadDashboard() {
         </div>
 
         <div className="w-full md:w-2/3">
-          <Card className="h-full">
+          <Card className="h-full transition-all duration-300 hover:shadow-md">
             <CardHeader className="pb-2">
               <CardTitle>Lead Management</CardTitle>
               <div className="flex justify-between items-center">
@@ -330,9 +302,9 @@ export function LeadDashboard() {
                     placeholder="Search leads..." 
                     value={searchTerm} 
                     onChange={(e) => setSearchTerm(e.target.value)} 
-                    className="h-8"
+                    className="h-8 transition-all duration-300"
                   />
-                  <Button size="sm" variant="ghost" className="h-8 px-2">
+                  <Button size="sm" variant="ghost" className="h-8 px-2 transition-all duration-300">
                     <Search className="h-4 w-4" />
                   </Button>
                 </div>
@@ -379,12 +351,13 @@ interface StatCardProps {
   description: string;
   clickable?: boolean;
   onClick: () => void;
+  className?: string;
 }
 
-function StatCard({ title, value, icon, description, clickable = false, onClick }: StatCardProps) {
+function StatCard({ title, value, icon, description, clickable = false, onClick, className = '' }: StatCardProps) {
   return (
     <Card 
-      className={`${clickable ? 'cursor-pointer transform transition-all hover:scale-105 hover:shadow-md' : ''}`}
+      className={`${clickable ? 'cursor-pointer transform transition-all hover:scale-105 hover:shadow-md' : ''} ${className}`}
       onClick={clickable ? onClick : undefined}
     >
       <CardHeader className="flex flex-row items-center justify-between pb-2">

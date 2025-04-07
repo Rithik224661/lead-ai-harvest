@@ -10,13 +10,15 @@ import { Download, Filter, Search, Trash2, CheckSquare, FileDown } from 'lucide-
 import { Lead } from './LeadCard';
 import { LeadTable } from './LeadTable';
 import { useNavigate } from 'react-router-dom';
+import { Skeleton } from './ui/skeleton';
 
 interface LeadsContentProps {
   leads: Lead[];
   priorityFilter: string | null;
+  isLoading?: boolean;
 }
 
-export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
+export function LeadsContent({ leads, priorityFilter, isLoading = false }: LeadsContentProps) {
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState(priorityFilter || 'all');
@@ -107,7 +109,7 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
             size="sm"
             onClick={handleExportSelected}
             disabled={selectedLeads.length === 0}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 transition-all duration-300 hover:bg-muted"
           >
             <FileDown className="h-4 w-4" />
             Export ({selectedLeads.length})
@@ -117,7 +119,7 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
             size="sm"
             onClick={handleDeleteSelected}
             disabled={selectedLeads.length === 0}
-            className="flex items-center gap-1 text-destructive"
+            className="flex items-center gap-1 text-destructive hover:bg-destructive/10 transition-all duration-300"
           >
             <Trash2 className="h-4 w-4" />
             Delete ({selectedLeads.length})
@@ -126,16 +128,16 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
       </div>
       
       {priorityFilter && (
-        <div className="mb-4 p-3 bg-muted rounded-md">
+        <div className="mb-4 p-3 bg-muted rounded-md animate-in fade-in-80 slide-in-from-bottom-5">
           <p>Showing leads with {priorityFilter} priority</p>
         </div>
       )}
       
-      <Card>
+      <Card className="transition-all duration-300 hover:shadow-md">
         <CardHeader className="pb-3">
           <CardTitle>Lead Management</CardTitle>
           <CardDescription>
-            {filteredLeads.length} leads found
+            {isLoading ? 'Loading leads...' : `${filteredLeads.length} leads found`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -145,9 +147,10 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
                 placeholder="Search leads..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1"
+                className="flex-1 transition-all duration-300"
+                disabled={isLoading}
               />
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" disabled={isLoading}>
                 <Search className="h-4 w-4" />
               </Button>
             </div>
@@ -163,6 +166,7 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
                     navigate(`/leads?priority=${value}`);
                   }
                 }}
+                disabled={isLoading}
               >
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Priority" />
@@ -178,6 +182,7 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
               <Select 
                 value={filterSource} 
                 onValueChange={setFilterSource}
+                disabled={isLoading}
               >
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Source" />
@@ -190,14 +195,19 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
             </div>
           </div>
           
-          {filteredLeads.length > 0 ? (
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          ) : filteredLeads.length > 0 ? (
             <LeadTable 
               leads={filteredLeads} 
               selectedLeads={selectedLeads} 
               onSelectLead={handleToggleSelect}
             />
           ) : (
-            <div className="text-center py-12 border rounded-md">
+            <div className="text-center py-12 border rounded-md animate-in fade-in-80">
               <p className="text-muted-foreground">No leads found with the current filters.</p>
               {(searchTerm || filterPriority !== 'all' || filterSource !== 'all') && (
                 <Button 
@@ -208,6 +218,7 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
                     setFilterSource('all');
                     navigate('/leads');
                   }}
+                  className="transition-all duration-300"
                 >
                   Clear all filters
                 </Button>
@@ -220,6 +231,8 @@ export function LeadsContent({ leads, priorityFilter }: LeadsContentProps) {
             variant="outline" 
             size="sm" 
             onClick={handleSelectAll}
+            disabled={isLoading || filteredLeads.length === 0}
+            className="transition-all duration-300 hover:bg-muted"
           >
             <CheckSquare className="mr-2 h-4 w-4" />
             {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0

@@ -3,251 +3,280 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
-import { AlertCircle, CheckCircle, Database, Key, RefreshCcw, RotateCcw, Save, Shield } from 'lucide-react';
-
-interface Settings {
-  openAiKey: string;
-  useProxies: boolean;
-  requestDelay: number;
-  respectRobotsTxt: boolean;
-  defaultSource: string;
-}
+import { Separator } from './ui/separator';
+import { Slider } from './ui/slider';
+import { Check, KeyRound, Lightbulb, RefreshCw, Shield, UserRound } from 'lucide-react';
 
 export function SettingsContent() {
-  const [settings, setSettings] = useState<Settings>({
-    openAiKey: '',
-    useProxies: true,
-    requestDelay: 2,
-    respectRobotsTxt: true,
-    defaultSource: 'linkedin'
-  });
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [keyIsValid, setKeyIsValid] = useState<boolean | null>(null);
-
-  // Load settings from localStorage on component mount
+  // API keys
+  const [openAiKey, setOpenAiKey] = useState('');
+  const [isVerifyingKey, setIsVerifyingKey] = useState(false);
+  const [isKeyVerified, setIsKeyVerified] = useState(false);
+  
+  // Scraping settings
+  const [useProxies, setUseProxies] = useState(true);
+  const [respectRobotsTxt, setRespectRobotsTxt] = useState(true);
+  const [requestDelay, setRequestDelay] = useState(3);
+  
+  // Appearance settings
+  const [darkMode, setDarkMode] = useState(false);
+  const [animationsEnabled, setAnimationsEnabled] = useState(true);
+  
+  // Load settings on component mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem('leadHarvestSettings');
-    if (savedSettings) {
+    const settings = localStorage.getItem('leadHarvestSettings');
+    if (settings) {
       try {
-        setSettings(JSON.parse(savedSettings));
+        const parsedSettings = JSON.parse(settings);
+        setOpenAiKey(parsedSettings.openAiKey || '');
+        setUseProxies(parsedSettings.useProxies !== undefined ? parsedSettings.useProxies : true);
+        setRespectRobotsTxt(parsedSettings.respectRobotsTxt !== undefined ? parsedSettings.respectRobotsTxt : true);
+        setRequestDelay(parsedSettings.requestDelay || 3);
+        setDarkMode(parsedSettings.darkMode || false);
+        setAnimationsEnabled(parsedSettings.animationsEnabled !== undefined ? parsedSettings.animationsEnabled : true);
+        setIsKeyVerified(!!parsedSettings.openAiKey);
       } catch (e) {
-        console.error('Failed to parse settings from localStorage', e);
+        console.error('Failed to parse settings', e);
       }
     }
   }, []);
 
-  const handleSaveSettings = () => {
-    // Save settings to localStorage
+  const saveSettings = () => {
+    const settings = {
+      openAiKey,
+      useProxies,
+      respectRobotsTxt,
+      requestDelay,
+      darkMode,
+      animationsEnabled
+    };
+    
     localStorage.setItem('leadHarvestSettings', JSON.stringify(settings));
     toast.success('Settings saved successfully');
   };
-  
-  const verifyApiKey = async () => {
-    if (!settings.openAiKey || settings.openAiKey.trim() === '') {
-      toast.error('Please enter an API key');
+
+  const verifyOpenAIKey = async () => {
+    if (!openAiKey.trim()) {
+      toast.error('Please enter your OpenAI API key');
       return;
     }
     
-    setIsVerifying(true);
-    setKeyIsValid(null);
+    setIsVerifyingKey(true);
     
     try {
-      // Simulate API key verification (in a real app, this would call OpenAI's API)
+      // Simulate API verification
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // For demo purposes, any key starting with "sk-" is considered valid
-      const isValid = settings.openAiKey.startsWith('sk-');
-      
-      setKeyIsValid(isValid);
+      // In a real implementation, we would make a test request to the OpenAI API
+      // For now, we'll just simulate success
+      const isValid = openAiKey.startsWith('sk-') && openAiKey.length > 10;
       
       if (isValid) {
+        setIsKeyVerified(true);
         toast.success('API key verified successfully');
-        handleSaveSettings();
+        saveSettings();
       } else {
         toast.error('Invalid API key format');
+        setIsKeyVerified(false);
       }
     } catch (error) {
       console.error('Error verifying API key:', error);
-      toast.error('Failed to verify API key');
-      setKeyIsValid(false);
+      toast.error('Failed to verify API key. Please try again.');
+      setIsKeyVerified(false);
     } finally {
-      setIsVerifying(false);
+      setIsVerifyingKey(false);
     }
+  };
+
+  const handleToggleChange = (setter: React.Dispatch<React.SetStateAction<boolean>>, value: boolean) => {
+    setter(value);
   };
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold mb-4">Settings</h1>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>API Configuration</CardTitle>
-          <CardDescription>
-            Configure API keys for external services
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="openai-key">OpenAI API Key</Label>
-            <div className="flex gap-2">
-              <Input 
-                id="openai-key"
-                type="password"
-                value={settings.openAiKey}
-                onChange={(e) => setSettings({...settings, openAiKey: e.target.value})}
-                placeholder="sk-..."
-              />
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => {
-                  const input = document.getElementById('openai-key') as HTMLInputElement;
-                  if (input) {
-                    input.type = input.type === 'password' ? 'text' : 'password';
-                  }
-                }}
-              >
-                <Key className="h-4 w-4" />
-              </Button>
-            </div>
-            {keyIsValid === true && (
-              <div className="flex items-center text-green-600 text-sm mt-1">
-                <CheckCircle className="h-4 w-4 mr-1" />
-                API key verified
-              </div>
-            )}
-            {keyIsValid === false && (
-              <div className="flex items-center text-red-600 text-sm mt-1">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                Invalid API key
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Required for AI-powered lead validation and classification
-            </p>
-            <Button 
-              onClick={verifyApiKey} 
-              disabled={isVerifying}
-              className="mt-2"
-            >
-              {isVerifying ? 'Verifying...' : 'Verify & Save API Key'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Scraping Settings</CardTitle>
-          <CardDescription>
-            Configure how the application scrapes data
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="transition-all duration-300 hover:shadow-md">
+          <CardHeader>
             <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Use Proxy Rotation</Label>
-                <p className="text-sm text-muted-foreground">
-                  Rotate between different proxy servers to avoid rate limiting
-                </p>
+              <div>
+                <CardTitle>API Settings</CardTitle>
+                <CardDescription>Configure API keys for lead generation</CardDescription>
               </div>
-              <Switch 
-                checked={settings.useProxies}
-                onCheckedChange={(checked) => setSettings({...settings, useProxies: checked})}
-              />
+              <KeyRound className="h-5 w-5 text-muted-foreground" />
             </div>
-
-            <div className="space-y-0.5">
-              <div className="flex justify-between">
-                <Label htmlFor="request-delay">Request Delay (seconds)</Label>
-                <span className="text-sm">{settings.requestDelay}s</span>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="openai-key">OpenAI API Key</Label>
+                {isKeyVerified && <span className="text-xs text-green-600 flex items-center"><Check className="h-3 w-3 mr-1" /> Verified</span>}
               </div>
-              <Slider
-                id="request-delay"
-                defaultValue={[settings.requestDelay]}
-                min={1}
-                max={10}
-                step={0.5}
-                onValueChange={(values) => setSettings({...settings, requestDelay: values[0]})}
-              />
+              <div className="flex space-x-2">
+                <Input 
+                  type="password"
+                  id="openai-key"
+                  value={openAiKey}
+                  onChange={(e) => setOpenAiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={verifyOpenAIKey}
+                  disabled={isVerifyingKey}
+                  variant="outline"
+                >
+                  {isVerifyingKey ? 'Verifying...' : 'Verify & Save'}
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Time between requests to avoid detection
+                Required for AI lead validation and generation.
               </p>
             </div>
+          </CardContent>
+        </Card>
 
+        <Card className="transition-all duration-300 hover:shadow-md">
+          <CardHeader>
             <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Respect robots.txt</Label>
-                <p className="text-sm text-muted-foreground">
-                  Follow ethical scraping guidelines
+              <div>
+                <CardTitle>Scraping Settings</CardTitle>
+                <CardDescription>Configure how leads are discovered</CardDescription>
+              </div>
+              <RefreshCw className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between space-x-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="use-proxies">Use Proxy Rotation</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically rotate between proxy servers
+                  </p>
+                </div>
+                <Switch 
+                  id="use-proxies"
+                  checked={useProxies}
+                  onCheckedChange={(checked) => handleToggleChange(setUseProxies, checked)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between space-x-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="respect-robots">Respect robots.txt</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Follow website crawling guidelines
+                  </p>
+                </div>
+                <Switch 
+                  id="respect-robots"
+                  checked={respectRobotsTxt}
+                  onCheckedChange={(checked) => handleToggleChange(setRespectRobotsTxt, checked)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label htmlFor="request-delay">Request Delay (seconds)</Label>
+                  <span className="text-sm">{requestDelay}s</span>
+                </div>
+                <Slider 
+                  id="request-delay"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={[requestDelay]}
+                  onValueChange={(values) => setRequestDelay(values[0])}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Time between requests to avoid rate limiting
                 </p>
               </div>
-              <Switch 
-                checked={settings.respectRobotsTxt}
-                onCheckedChange={(checked) => setSettings({...settings, respectRobotsTxt: checked})}
-              />
             </div>
-
+          </CardContent>
+        </Card>
+        
+        <Card className="transition-all duration-300 hover:shadow-md">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>Customize your experience</CardDescription>
+              </div>
+              <Lightbulb className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between space-x-2">
+                <Label htmlFor="dark-mode">Dark Mode</Label>
+                <Switch 
+                  id="dark-mode"
+                  checked={darkMode}
+                  onCheckedChange={(checked) => handleToggleChange(setDarkMode, checked)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between space-x-2">
+                <Label htmlFor="animations">Enable Animations</Label>
+                <Switch 
+                  id="animations"
+                  checked={animationsEnabled}
+                  onCheckedChange={(checked) => handleToggleChange(setAnimationsEnabled, checked)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="transition-all duration-300 hover:shadow-md">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>User Account</CardTitle>
+                <CardDescription>Manage your account settings</CardDescription>
+              </div>
+              <UserRound className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
+                UL
+              </div>
+              <div>
+                <p className="font-medium">Lead AI Harvest User</p>
+                <p className="text-sm text-muted-foreground">user@example.com</p>
+              </div>
+            </div>
+            
+            <Separator className="my-4" />
+            
             <div className="space-y-2">
-              <Label htmlFor="default-source">Default Search Source</Label>
-              <Select 
-                value={settings.defaultSource}
-                onValueChange={(value) => setSettings({...settings, defaultSource: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select default source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="linkedin">LinkedIn</SelectItem>
-                  <SelectItem value="twitter">Twitter</SelectItem>
-                  <SelectItem value="crunchbase">Crunchbase</SelectItem>
-                  <SelectItem value="angellist">AngelList</SelectItem>
-                </SelectContent>
-              </Select>
+              <Button variant="outline" className="w-full justify-start">
+                Edit Profile
+              </Button>
+              <Button variant="outline" className="w-full justify-start">
+                Change Password
+              </Button>
+              <Button variant="outline" className="w-full justify-start text-destructive hover:bg-destructive/10">
+                Delete Account
+              </Button>
             </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={handleSaveSettings} className="ml-auto">
-            <Save className="mr-2 h-4 w-4" />
-            Save Settings
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Management</CardTitle>
-          <CardDescription>
-            Manage your application data
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button variant="outline" className="w-full" onClick={() => {
-              window.location.href = '/export';
-            }}>
-              <Database className="mr-2 h-4 w-4" />
-              Export All Data
-            </Button>
-            <Button variant="outline" className="w-full text-destructive" onClick={() => {
-              if (confirm("Are you sure? This will delete all your stored leads.")) {
-                localStorage.removeItem('storedLeads');
-                toast.success('All data has been cleared');
-              }
-            }}>
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Reset Application
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div className="flex justify-end mt-6">
+        <Button onClick={saveSettings} className="px-8 transition-all duration-300 hover:scale-105">
+          Save All Settings
+        </Button>
+      </div>
     </div>
   );
 }

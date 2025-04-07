@@ -5,40 +5,59 @@ import { LeadsContent } from "@/components/LeadsContent";
 import { Lead } from "@/components/LeadCard";
 import { mockLeads } from "@/data/mockLeads";
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const Leads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchParams] = useSearchParams();
   const priority = searchParams.get('priority');
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     // In a real application, this would fetch from an API
-    // For now, we'll use mockLeads and filter them based on the URL parameter
-    const storedLeads = localStorage.getItem('storedLeads');
-    let leadsData = mockLeads;
+    // We'll simulate loading with a small delay for UX
+    setIsLoading(true);
     
-    if (storedLeads) {
+    const loadLeads = async () => {
       try {
-        leadsData = JSON.parse(storedLeads);
-      } catch (e) {
-        console.error('Failed to parse leads from localStorage', e);
+        // Get leads from localStorage
+        const storedLeads = localStorage.getItem('storedLeads');
+        let leadsData = mockLeads;
+        
+        if (storedLeads) {
+          try {
+            leadsData = JSON.parse(storedLeads);
+          } catch (e) {
+            console.error('Failed to parse leads from localStorage', e);
+            toast.error('Failed to load leads data');
+          }
+        } else {
+          // Store mock leads in localStorage for future use
+          localStorage.setItem('storedLeads', JSON.stringify(mockLeads));
+        }
+        
+        // Filter by priority if provided
+        if (priority) {
+          leadsData = leadsData.filter(lead => lead.priority === priority);
+        }
+        
+        // Small delay for better UX
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setLeads(leadsData);
+      } catch (error) {
+        console.error('Error loading leads:', error);
+        toast.error('Failed to load leads data');
+      } finally {
+        setIsLoading(false);
       }
-    } else {
-      // Store mock leads in localStorage for future use
-      localStorage.setItem('storedLeads', JSON.stringify(mockLeads));
-    }
+    };
     
-    // Filter by priority if provided
-    if (priority) {
-      leadsData = leadsData.filter(lead => lead.priority === priority);
-    }
-    
-    setLeads(leadsData);
+    loadLeads();
   }, [priority]);
   
   return (
     <Layout>
-      <LeadsContent leads={leads} priorityFilter={priority} />
+      <LeadsContent leads={leads} priorityFilter={priority} isLoading={isLoading} />
     </Layout>
   );
 };

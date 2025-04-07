@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -10,9 +10,18 @@ import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
-import { BadgeCheck, Clock, Database, Globe, Pause, Play, RotateCcw, Search, Shield, Target } from 'lucide-react';
+import { 
+  AlertDialog, AlertDialogAction, AlertDialogCancel, 
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter, 
+  AlertDialogHeader, AlertDialogTitle
+} from './ui/alert-dialog';
+import { 
+  BadgeCheck, Clock, Database, Globe, Pause, Play, 
+  RotateCcw, Search, Shield, Target, Brain
+} from 'lucide-react';
 import { Lead } from './LeadCard';
 import { mockLeads } from '@/data/mockLeads';
+import { generateLeadsWithAI, validateLeadsWithAI } from '@/services/aiLeadService';
 
 export function FindLeadsContent() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,6 +35,23 @@ export function FindLeadsContent() {
   const [currentProxy, setCurrentProxy] = useState('192.168.1.1:8080');
   const [requestCount, setRequestCount] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [leadCount, setLeadCount] = useState(5);
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  
+  // Load settings on component mount
+  useEffect(() => {
+    const settings = localStorage.getItem('leadHarvestSettings');
+    if (settings) {
+      try {
+        const parsedSettings = JSON.parse(settings);
+        setUseProxy(parsedSettings.useProxies !== undefined ? parsedSettings.useProxies : true);
+        setRespectRobotsTxt(parsedSettings.respectRobotsTxt !== undefined ? parsedSettings.respectRobotsTxt : true);
+        setRequestDelay(parsedSettings.requestDelay || 2);
+      } catch (e) {
+        console.error('Failed to parse settings', e);
+      }
+    }
+  }, []);
 
   // Simulated proxies
   const proxies = [
@@ -57,10 +83,32 @@ export function FindLeadsContent() {
     return [keyword];
   };
 
-  // Function to simulate scraping with proxy rotation and rate limiting
-  const handleSearch = () => {
+  // Function to handle lead generation with AI
+  const handleGenerateLeads = async () => {
+    setShowGenerateDialog(false);
+    
     if (!searchTerm.trim()) {
       toast.error('Please enter a search term');
+      return;
+    }
+    
+    // Check if OpenAI API key is set
+    const settings = localStorage.getItem('leadHarvestSettings');
+    let apiKey = '';
+    
+    if (settings) {
+      try {
+        const parsedSettings = JSON.parse(settings);
+        apiKey = parsedSettings.openAiKey;
+      } catch (e) {
+        console.error('Failed to parse settings', e);
+      }
+    }
+    
+    if (!apiKey) {
+      toast.error('OpenAI API key is required for lead generation', {
+        description: 'Please add your API key in the Settings page.',
+      });
       return;
     }
 
@@ -74,7 +122,7 @@ export function FindLeadsContent() {
     console.log('Expanded keywords:', expandedKeywords);
     
     toast.info(
-      `Searching for "${searchTerm}"`, 
+      `Generating ${leadCount} leads for "${searchTerm}"`, 
       {
         description: `Expanded to: ${expandedKeywords.join(', ')}`,
         duration: 5000
@@ -84,8 +132,9 @@ export function FindLeadsContent() {
     // Simulate the scraping process with progress updates
     let progress = 0;
     let currentProxyIndex = 0;
+    let generatedLeads: Lead[] = [];
 
-    const simulateRequests = setInterval(() => {
+    const simulateRequests = setInterval(async () => {
       // Rotate proxy
       if (useProxy) {
         currentProxyIndex = (currentProxyIndex + 1) % proxies.length;
@@ -98,29 +147,20 @@ export function FindLeadsContent() {
       setSearchProgress(progressCapped);
       setRequestCount(prev => prev + 1);
 
-      // Add found leads gradually
-      if (progress > 20 && foundLeads.length < 10) {
-        // Filter mockLeads based on search term or expanded keywords
-        const filteredLeads = mockLeads.filter(lead => {
-          const matchesKeyword = expandedKeywords.some(keyword => 
-            lead.jobTitle.toLowerCase().includes(keyword.toLowerCase()) || 
-            lead.company.toLowerCase().includes(keyword.toLowerCase())
-          );
-          return matchesKeyword;
-        });
-
-        // Add some of the filtered leads
-        const randomIndex = Math.floor(Math.random() * filteredLeads.length);
-        const newLead = {...filteredLeads[randomIndex % filteredLeads.length]};
-        newLead.id = `found-${foundLeads.length + 1}`;
-        
-        setFoundLeads(prev => {
-          // Avoid duplicates
-          if (prev.some(lead => lead.company === newLead.company && lead.name === newLead.name)) {
-            return prev;
-          }
-          return [...prev, newLead];
-        });
+      // If almost done, generate the leads with AI
+      if (progress > 85 && generatedLeads.length === 0) {
+        try {
+          generatedLeads = await generateLeadsWithAI({
+            count: leadCount,
+            searchTerm,
+            source: searchSource
+          });
+          
+          setFoundLeads(generatedLeads);
+        } catch (error) {
+          console.error("Error generating leads:", error);
+          toast.error("Error generating leads. Please try again.");
+        }
       }
 
       // Complete the search
@@ -128,7 +168,7 @@ export function FindLeadsContent() {
         clearInterval(simulateRequests);
         setIsSearching(false);
         toast.success(
-          `Found ${foundLeads.length + 1} leads`, 
+          `Found ${generatedLeads.length} leads`, 
           { 
             description: 'Ready for export or validation',
           }
@@ -138,6 +178,16 @@ export function FindLeadsContent() {
 
     // Cleanup function
     return () => clearInterval(simulateRequests);
+  };
+
+  // Function to handle search button click
+  const handleSearch = () => {
+    if (!searchTerm.trim()) {
+      toast.error('Please enter a search term');
+      return;
+    }
+    
+    setShowGenerateDialog(true);
   };
 
   const handleSaveLeads = () => {
@@ -154,41 +204,40 @@ export function FindLeadsContent() {
     setSearchProgress(0);
   };
 
-  const handleValidateLeads = () => {
+  const handleValidateLeads = async () => {
     if (foundLeads.length === 0) {
       toast.error('No leads to validate');
       return;
     }
 
     toast.info('Validating leads with AI...', { duration: 3000 });
-
-    // Simulate AI validation process
-    setTimeout(() => {
-      const validatedLeads = foundLeads.map(lead => {
-        // Simple validation logic based on job title
-        const title = lead.jobTitle.toLowerCase();
-        let priority;
-        
-        if (
-          title.includes('cto') || 
-          title.includes('vp') || 
-          title.includes('chief') || 
-          title.includes('founder')
-        ) {
-          priority = 'high';
-        } else if (
-          title.includes('director') || 
-          title.includes('manager') || 
-          title.includes('head of')
-        ) {
-          priority = 'medium';
-        } else {
-          priority = 'low';
-        }
-        
-        return { ...lead, priority };
+    
+    // Check if OpenAI API key is set
+    const settings = localStorage.getItem('leadHarvestSettings');
+    let apiKey = '';
+    
+    if (settings) {
+      try {
+        const parsedSettings = JSON.parse(settings);
+        apiKey = parsedSettings.openAiKey;
+      } catch (e) {
+        console.error('Failed to parse settings', e);
+      }
+    }
+    
+    if (!apiKey) {
+      toast.error('OpenAI API key is required for lead validation', {
+        description: 'Please add your API key in the Settings page.',
       });
+      return;
+    }
 
+    try {
+      const validatedLeads = await validateLeadsWithAI(
+        foundLeads, 
+        "CTO OR VP OR Chief OR Founder OR Director"
+      );
+      
       setFoundLeads(validatedLeads);
       
       const highCount = validatedLeads.filter(l => l.priority === 'high').length;
@@ -199,12 +248,45 @@ export function FindLeadsContent() {
           description: `Found ${highCount} high-priority leads (${Math.round(highCount/validatedLeads.length * 100)}% confidence)`,
         }
       );
-    }, 2000);
+      
+      // Update the leads in localStorage to include the AI validation results
+      const storedLeadsJSON = localStorage.getItem('storedLeads');
+      if (storedLeadsJSON) {
+        try {
+          const storedLeads = JSON.parse(storedLeadsJSON);
+          
+          // Update stored leads with validated information
+          const updatedStoredLeads = storedLeads.map((storedLead: Lead) => {
+            const validatedLead = validatedLeads.find(l => 
+              l.email === storedLead.email && l.company === storedLead.company
+            );
+            
+            if (validatedLead) {
+              return {
+                ...storedLead,
+                priority: validatedLead.priority,
+                aiScore: validatedLead.aiScore
+              };
+            }
+            
+            return storedLead;
+          });
+          
+          localStorage.setItem('storedLeads', JSON.stringify(updatedStoredLeads));
+        } catch (e) {
+          console.error('Failed to update stored leads', e);
+        }
+      }
+      
+    } catch (error) {
+      console.error("Error validating leads:", error);
+      toast.error("Error validating leads. Please try again.");
+    }
   };
 
   return (
     <div className="p-6 space-y-6">
-      <Card className="w-full">
+      <Card className="w-full transition-all duration-300 hover:shadow-md">
         <CardHeader>
           <CardTitle>Find Leads</CardTitle>
           <CardDescription>
@@ -219,11 +301,13 @@ export function FindLeadsContent() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 disabled={isSearching}
+                className="transition-all duration-300"
               />
               <Button 
                 variant={isSearching ? "outline" : "default"}
                 onClick={isSearching ? () => setIsSearching(false) : handleSearch}
                 disabled={!searchTerm && !isSearching}
+                className="transition-all duration-300 hover:scale-105"
               >
                 {isSearching ? (
                   <>
@@ -256,7 +340,7 @@ export function FindLeadsContent() {
           </div>
 
           {showAdvanced && (
-            <Card className="bg-muted/20">
+            <Card className="bg-muted/20 transition-all duration-300">
               <CardHeader className="py-3">
                 <CardTitle className="text-base">Advanced Settings</CardTitle>
               </CardHeader>
@@ -307,11 +391,12 @@ export function FindLeadsContent() {
               variant="ghost" 
               onClick={() => setShowAdvanced(!showAdvanced)}
               size="sm"
+              className="transition-all duration-300"
             >
               {showAdvanced ? 'Hide' : 'Show'} Advanced Options
             </Button>
             {useProxy && isSearching && (
-              <div className="flex items-center text-xs text-muted-foreground gap-2">
+              <div className="flex items-center text-xs text-muted-foreground gap-2 animate-pulse">
                 <RotateCcw className="h-3 w-3 animate-spin" />
                 <span>Current proxy: {currentProxy}</span>
                 <span>Requests: {requestCount}</span>
@@ -325,14 +410,14 @@ export function FindLeadsContent() {
                 <span>Searching...</span>
                 <span>{Math.round(searchProgress)}%</span>
               </div>
-              <Progress value={searchProgress} />
+              <Progress value={searchProgress} className="h-2 transition-all" />
             </div>
           )}
         </CardContent>
       </Card>
 
       {(isSearching || foundLeads.length > 0) && (
-        <Card className="w-full">
+        <Card className="w-full transition-all duration-300 hover:shadow-md">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle>Results</CardTitle>
@@ -342,6 +427,7 @@ export function FindLeadsContent() {
                   variant="outline"
                   onClick={handleValidateLeads}
                   disabled={foundLeads.length === 0 || isSearching}
+                  className="transition-all duration-300 hover:scale-105"
                 >
                   <BadgeCheck className="mr-2 h-4 w-4" />
                   Validate with AI
@@ -350,6 +436,7 @@ export function FindLeadsContent() {
                   size="sm"
                   onClick={handleSaveLeads}
                   disabled={foundLeads.length === 0 || isSearching}
+                  className="transition-all duration-300 hover:scale-105"
                 >
                   <Database className="mr-2 h-4 w-4" />
                   Save to My Leads
@@ -383,7 +470,7 @@ export function FindLeadsContent() {
                     </tr>
                   ) : (
                     foundLeads.map((lead) => (
-                      <tr key={lead.id} className="border-b hover:bg-muted/50">
+                      <tr key={lead.id} className="border-b hover:bg-muted/50 transition-colors duration-300">
                         <td className="py-3 px-2">{lead.name}</td>
                         <td className="py-3 px-2">{lead.jobTitle}</td>
                         <td className="py-3 px-2">{lead.company}</td>
@@ -398,9 +485,12 @@ export function FindLeadsContent() {
                                     : lead.priority === 'medium'
                                     ? 'bg-blue-100 text-blue-800'
                                     : 'bg-gray-100 text-gray-800'
-                                }`}
+                                } transition-all duration-300`}
                               >
-                                {lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)}
+                                {lead.aiScore 
+                                  ? `${lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)} (${lead.aiScore}/10)`
+                                  : lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)
+                                }
                               </span>
                             )}
                           </td>
@@ -424,6 +514,59 @@ export function FindLeadsContent() {
           </CardFooter>
         </Card>
       )}
+      
+      {/* Lead Generation Dialog */}
+      <AlertDialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+        <AlertDialogContent className="transition-all duration-300 animate-in fade-in-80 zoom-in-90">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" /> AI Lead Generation
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              How many leads would you like to generate for <strong>"{searchTerm}"</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="lead-count">Number of leads</Label>
+                <span className="text-sm font-medium">{leadCount} leads</span>
+              </div>
+              <Slider
+                id="lead-count"
+                value={[leadCount]}
+                min={1}
+                max={20}
+                step={1}
+                onValueChange={(values) => setLeadCount(values[0])}
+              />
+              
+              <div className="text-sm text-muted-foreground mt-2">
+                <p>Lead generation will use the following parameters:</p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Source: {searchSource}</li>
+                  <li>Proxy rotation: {useProxy ? 'Enabled' : 'Disabled'}</li>
+                  <li>Request delay: {requestDelay}s</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel className="transition-all duration-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleGenerateLeads();
+              }}
+              className="transition-all duration-300 hover:scale-105"
+            >
+              Generate Leads
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

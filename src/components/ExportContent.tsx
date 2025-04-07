@@ -10,6 +10,95 @@ import { toast } from 'sonner';
 import { Download, FileSpreadsheet, FileText, FileArchive, ChevronRight } from 'lucide-react';
 import { Lead } from './LeadCard';
 import { mockLeads } from '@/data/mockLeads';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { PDFViewer, Document, Page, Text, View, StyleSheet, PDFDownloadLink } from '@react-pdf/renderer';
+
+// PDF styles
+const styles = StyleSheet.create({
+  page: {
+    flexDirection: 'column',
+    backgroundColor: '#fff',
+    padding: 30
+  },
+  header: {
+    fontSize: 14,
+    marginBottom: 10,
+    fontWeight: 'bold'
+  },
+  title: {
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+    fontWeight: 'bold'
+  },
+  table: {
+    display: 'flex',
+    width: 'auto',
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderColor: '#bfbfbf',
+    borderRightWidth: 0,
+    borderBottomWidth: 0
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#bfbfbf',
+  },
+  tableColHeader: {
+    width: '25%',
+    borderStyle: 'solid',
+    borderRightWidth: 1,
+    borderRightColor: '#bfbfbf',
+    padding: 5,
+    backgroundColor: '#f0f0f0',
+    textAlign: 'left',
+    fontSize: 10,
+    fontWeight: 'bold'
+  },
+  tableCol: {
+    width: '25%',
+    borderStyle: 'solid',
+    borderRightWidth: 1,
+    borderRightColor: '#bfbfbf',
+    padding: 5,
+    fontSize: 8
+  }
+});
+
+// PDF Document Component
+const LeadsPDF = ({ leads, fields }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.title}>Leads Export</Text>
+      
+      <View style={styles.table}>
+        <View style={styles.tableRow}>
+          {fields.includes('name') && <Text style={styles.tableColHeader}>Name</Text>}
+          {fields.includes('jobTitle') && <Text style={styles.tableColHeader}>Job Title</Text>}
+          {fields.includes('company') && <Text style={styles.tableColHeader}>Company</Text>}
+          {fields.includes('email') && <Text style={styles.tableColHeader}>Email</Text>}
+          {fields.includes('phone') && <Text style={styles.tableColHeader}>Phone</Text>}
+          {fields.includes('priority') && <Text style={styles.tableColHeader}>Priority</Text>}
+          {fields.includes('source') && <Text style={styles.tableColHeader}>Source</Text>}
+        </View>
+        
+        {leads.map((lead, i) => (
+          <View key={i} style={styles.tableRow}>
+            {fields.includes('name') && <Text style={styles.tableCol}>{lead.name}</Text>}
+            {fields.includes('jobTitle') && <Text style={styles.tableCol}>{lead.jobTitle}</Text>}
+            {fields.includes('company') && <Text style={styles.tableCol}>{lead.company}</Text>}
+            {fields.includes('email') && <Text style={styles.tableCol}>{lead.email || 'N/A'}</Text>}
+            {fields.includes('phone') && <Text style={styles.tableCol}>{lead.phone || 'N/A'}</Text>}
+            {fields.includes('priority') && <Text style={styles.tableCol}>{lead.priority}</Text>}
+            {fields.includes('source') && <Text style={styles.tableCol}>{lead.source}</Text>}
+          </View>
+        ))}
+      </View>
+    </Page>
+  </Document>
+);
 
 export function ExportContent() {
   const [fileType, setFileType] = useState('csv');
@@ -25,6 +114,7 @@ export function ExportContent() {
   });
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [isPdfReady, setIsPdfReady] = useState(false);
 
   useEffect(() => {
     // Get leads from localStorage
@@ -66,7 +156,14 @@ export function ExportContent() {
           exportExcel(fieldsToExport);
           break;
         case 'pdf':
-          exportPDF(fieldsToExport);
+          setIsPdfReady(true);
+          setTimeout(() => {
+            const pdfButton = document.querySelector('#download-pdf-button');
+            if (pdfButton) {
+              (pdfButton as HTMLElement).click();
+              setIsPdfReady(false);
+            }
+          }, 500);
           break;
       }
     } catch (error) {
@@ -106,39 +203,41 @@ export function ExportContent() {
   };
 
   const exportExcel = (fieldsToExport: string[]) => {
-    // Simulate Excel export
-    setTimeout(() => {
-      const blob = new Blob(['Excel export is a premium feature. Coming soon!'], 
-        { type: 'text/plain;charset=utf-8;' });
-      
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `leads-export-${new Date().toISOString().split('T')[0]}.txt`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Leads');
+    
+    // Add headers
+    const headers = fieldsToExport.map(field => 
+      field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+    );
+    worksheet.addRow(headers);
+    
+    // Style the header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+    
+    // Add data
+    filteredLeads.forEach(lead => {
+      const rowData = fieldsToExport.map(field => lead[field as keyof Lead] || '');
+      worksheet.addRow(rowData);
+    });
+    
+    // Auto-fit columns
+    worksheet.columns.forEach(column => {
+      column.width = 15;
+    });
+    
+    // Generate the Excel file
+    workbook.xlsx.writeBuffer().then(buffer => {
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `leads-export-${new Date().toISOString().split('T')[0]}.xlsx`);
       showSuccessToast();
-    }, 1500);
-  };
-
-  const exportPDF = (fieldsToExport: string[]) => {
-    // Simulate PDF export
-    setTimeout(() => {
-      const blob = new Blob(['PDF export is a premium feature. Coming soon!'], 
-        { type: 'text/plain;charset=utf-8;' });
-      
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `leads-export-${new Date().toISOString().split('T')[0]}.txt`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      showSuccessToast();
-    }, 1500);
+    });
   };
 
   const showSuccessToast = () => {
@@ -146,6 +245,12 @@ export function ExportContent() {
     toast.success('Export successful', {
       description: `Exported ${filteredLeads.length} leads to ${fileType.toUpperCase()} (${highPriorityCount} high priority)`,
     });
+  };
+
+  const getFieldsToExport = () => {
+    return Object.entries(selectedFields)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([field]) => field);
   };
 
   return (
@@ -277,6 +382,7 @@ export function ExportContent() {
               <Button 
                 onClick={handleExport}
                 disabled={isExporting}
+                className="relative"
               >
                 <Download className="mr-2 h-4 w-4" />
                 {isExporting ? 'Exporting...' : `Export ${fileType.toUpperCase()}`}
@@ -337,6 +443,24 @@ export function ExportContent() {
             </CardContent>
           </Card>
         </div>
+      </div>
+      
+      {/* Hidden PDF download link */}
+      <div style={{ display: 'none' }}>
+        {isPdfReady && (
+          <PDFDownloadLink 
+            document={
+              <LeadsPDF 
+                leads={filteredLeads} 
+                fields={getFieldsToExport()}
+              />
+            } 
+            fileName={`leads-export-${new Date().toISOString().split('T')[0]}.pdf`}
+            id="download-pdf-button"
+          >
+            {({ loading }) => (loading ? 'Loading document...' : 'Download PDF')}
+          </PDFDownloadLink>
+        )}
       </div>
     </div>
   );
