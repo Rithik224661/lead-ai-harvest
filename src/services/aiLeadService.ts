@@ -1,6 +1,7 @@
-
 import { Lead } from "@/components/LeadCard";
 import { toast } from "sonner";
+import { validateLead, enhancedValidateLeadsWithAI } from "@/utils/leadValidation";
+import { auditService } from "@/utils/auditService";
 
 interface AIGenerationOptions {
   count: number;
@@ -35,6 +36,9 @@ export const generateLeadsWithAI = async (options: AIGenerationOptions): Promise
     // Simulate API call with realistic delay
     // In a real implementation, this would make an actual API call to OpenAI
     const generatedLeads = await simulateAILeadGeneration(count, searchTerm, source);
+    
+    // Log the scraping activity
+    auditService.logScrape(source, true, '192.168.1.1:8080', generatedLeads.length);
     
     // Store the newly generated leads
     const existingLeadsJSON = localStorage.getItem('storedLeads');
@@ -85,46 +89,11 @@ export const validateLeadsWithAI = async (leads: Lead[], criteria: string): Prom
       return leads;
     }
 
-    // In a real implementation, this would make an actual API call to OpenAI
-    // This function simulates AI validation with more realistic data
-    const validatedLeads = leads.map(lead => {
-      // Parse validation criteria for more sophisticated filtering
-      const criteriaRules = criteria
-        .split('OR')
-        .map(rule => rule.trim().toLowerCase());
-      
-      const title = lead.jobTitle.toLowerCase();
-      
-      // Generate an AI score based on job title
-      let aiScore = 1;
-      let priority: "high" | "medium" | "low" = "low";
-      
-      // Check for high priority matches (custom criteria)
-      if (criteriaRules.some(rule => title.includes(rule))) {
-        priority = 'high';
-        aiScore = Math.floor(Math.random() * 2) + 9; // 9-10
-      } 
-      // Check for medium priority
-      else if (
-        title.includes('manager') || 
-        title.includes('lead') || 
-        title.includes('head')
-      ) {
-        priority = 'medium';
-        aiScore = Math.floor(Math.random() * 2) + 7; // 7-8
-      } 
-      // Everything else is low priority
-      else {
-        priority = 'low';
-        aiScore = Math.floor(Math.random() * 6) + 1; // 1-6
-      }
-      
-      return {
-        ...lead,
-        priority,
-        aiScore
-      };
-    });
+    // Use our enhanced validation that includes suspicious lead detection
+    const validatedLeads = await enhancedValidateLeadsWithAI(leads, criteria, apiKey);
+    
+    // Log the validation activity
+    auditService.logValidation(leads.length, criteria);
     
     return validatedLeads;
   } catch (error) {

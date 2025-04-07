@@ -6,6 +6,7 @@ import { Lead } from "@/components/LeadCard";
 import { mockLeads } from "@/data/mockLeads";
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { validateLead } from "@/utils/leadValidation";
 
 const Leads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -36,14 +37,31 @@ const Leads = () => {
           localStorage.setItem('storedLeads', JSON.stringify(mockLeads));
         }
         
+        // Perform validation check on each lead
+        const validatedLeads = leadsData.map((lead: Lead) => {
+          // Only validate if the lead hasn't been validated yet
+          if (!lead.validationIssues) {
+            const validation = validateLead(lead);
+            return {
+              ...lead,
+              validationIssues: validation.isValid ? [] : validation.issues
+            };
+          }
+          return lead;
+        });
+        
         // Filter by priority if provided
+        let filteredLeads = validatedLeads;
         if (priority) {
-          leadsData = leadsData.filter(lead => lead.priority === priority);
+          filteredLeads = validatedLeads.filter(lead => lead.priority === priority);
         }
         
         // Small delay for better UX
         await new Promise(resolve => setTimeout(resolve, 300));
-        setLeads(leadsData);
+        setLeads(filteredLeads);
+        
+        // Update localStorage with validations
+        localStorage.setItem('storedLeads', JSON.stringify(validatedLeads));
       } catch (error) {
         console.error('Error loading leads:', error);
         toast.error('Failed to load leads data');
@@ -57,7 +75,11 @@ const Leads = () => {
   
   return (
     <Layout>
-      <LeadsContent leads={leads} priorityFilter={priority} isLoading={isLoading} />
+      <LeadsContent 
+        leads={leads} 
+        priorityFilter={priority} 
+        isLoading={isLoading} 
+      />
     </Layout>
   );
 };

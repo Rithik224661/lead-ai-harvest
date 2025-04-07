@@ -2,7 +2,8 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Mail, Phone, Building, User, Briefcase } from "lucide-react";
+import { Mail, Phone, Building, User, Briefcase, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 export interface Lead {
   id: string;
@@ -13,7 +14,8 @@ export interface Lead {
   phone: string | null;
   priority: "high" | "medium" | "low";
   source: string;
-  aiScore?: number; // Added AI score property
+  aiScore?: number;
+  validationIssues?: { field: string; reason: string }[];
 }
 
 interface LeadCardProps {
@@ -23,11 +25,36 @@ interface LeadCardProps {
 }
 
 export function LeadCard({ lead, onSelect, isSelected }: LeadCardProps) {
+  const hasIssues = lead.validationIssues && lead.validationIssues.length > 0;
+  
   return (
-    <Card className={`transition-all ${isSelected ? 'border-teal-500 shadow-md' : ''}`}>
+    <Card className={`transition-all ${isSelected ? 'border-teal-500 shadow-md' : ''} ${hasIssues ? 'border-amber-300' : ''}`}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg">{lead.name}</CardTitle>
+          <CardTitle className="text-lg flex items-center">
+            {lead.name}
+            {hasIssues && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <div className="text-sm">
+                      <p className="font-semibold mb-1">Validation Issues:</p>
+                      <ul className="list-disc pl-4">
+                        {lead.validationIssues?.map((issue, idx) => (
+                          <li key={idx} className="mb-1">
+                            <span className="font-medium">{issue.field}:</span> {issue.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </CardTitle>
           <PriorityBadge priority={lead.priority} aiScore={lead.aiScore} />
         </div>
         <CardDescription className="flex items-center gap-1">
@@ -42,13 +69,13 @@ export function LeadCard({ lead, onSelect, isSelected }: LeadCardProps) {
             <span>{lead.company}</span>
           </div>
           {lead.email && (
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className={`flex items-center gap-2 text-muted-foreground ${lead.validationIssues?.some(i => i.field === 'email') ? 'text-amber-600' : ''}`}>
               <Mail className="h-3.5 w-3.5" />
               <span>{lead.email}</span>
             </div>
           )}
           {lead.phone && (
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className={`flex items-center gap-2 text-muted-foreground ${lead.validationIssues?.some(i => i.field === 'phone') ? 'text-amber-600' : ''}`}>
               <Phone className="h-3.5 w-3.5" />
               <span>{lead.phone}</span>
             </div>

@@ -6,11 +6,13 @@ import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
-import { Download, Filter, Search, Trash2, CheckSquare, FileDown } from 'lucide-react';
+import { Download, Filter, Search, Trash2, CheckSquare, FileDown, AlertTriangle } from 'lucide-react';
 import { Lead } from './LeadCard';
 import { LeadTable } from './LeadTable';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from './ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { auditService } from '@/utils/auditService';
 
 interface LeadsContentProps {
   leads: Lead[];
@@ -23,6 +25,7 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState(priorityFilter || 'all');
   const [filterSource, setFilterSource] = useState('all');
+  const [filterValidation, setFilterValidation] = useState('all');
   const navigate = useNavigate();
   
   // Update filter when URL parameter changes
@@ -42,7 +45,13 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
     const matchesPriority = filterPriority === 'all' || lead.priority === filterPriority;
     const matchesSource = filterSource === 'all' || lead.source === filterSource;
     
-    return matchesSearch && matchesPriority && matchesSource;
+    // Handle validation filter
+    const hasValidationIssues = lead.validationIssues && lead.validationIssues.length > 0;
+    const matchesValidation = filterValidation === 'all' || 
+      (filterValidation === 'valid' && !hasValidationIssues) ||
+      (filterValidation === 'invalid' && hasValidationIssues);
+    
+    return matchesSearch && matchesPriority && matchesSource && matchesValidation;
   });
 
   const handleToggleSelect = (lead: Lead) => {
@@ -68,7 +77,10 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
       return;
     }
 
-    navigate('/export');
+    // Log the export activity using audit service
+    auditService.logExport('UI_Navigation', selectedLeads.length);
+    
+    navigate('/export', { state: { selectedLeads: selectedLeads.map(l => l.id) } });
   };
 
   const handleDeleteSelected = () => {
@@ -80,6 +92,9 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
     // In a real app, this would call an API to delete the leads
     const updatedLeads = leads.filter(lead => !selectedLeads.some(l => l.id === lead.id));
     localStorage.setItem('storedLeads', JSON.stringify(updatedLeads));
+    
+    // Log the delete operation
+    auditService.addLog('DELETE', { leads_count: selectedLeads.length });
     
     toast.success(`Deleted ${selectedLeads.length} leads`);
     
@@ -98,6 +113,11 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
       </SelectItem>
     ));
   };
+
+  // Count leads with validation issues
+  const leadsWithIssues = leads.filter(lead => 
+    lead.validationIssues && lead.validationIssues.length > 0
+  ).length;
 
   return (
     <div className="p-6 space-y-6">
@@ -135,10 +155,29 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
       
       <Card className="transition-all duration-300 hover:shadow-md">
         <CardHeader className="pb-3">
-          <CardTitle>Lead Management</CardTitle>
-          <CardDescription>
-            {isLoading ? 'Loading leads...' : `${filteredLeads.length} leads found`}
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Lead Management</CardTitle>
+              <CardDescription>
+                {isLoading ? 'Loading leads...' : `${filteredLeads.length} leads found`}
+                {leadsWithIssues > 0 && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="ml-2 inline-flex items-center text-amber-500">
+                          <AlertTriangle className="h-4 w-4 mr-1" />
+                          {leadsWithIssues} with issues
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Leads with validation issues detected</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col md:flex-row gap-4">
@@ -154,7 +193,7 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
                 <Search className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Select 
                 value={filterPriority} 
                 onValueChange={(value) => {
@@ -192,6 +231,21 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
                   {getSourceOptions()}
                 </SelectContent>
               </Select>
+
+              <Select 
+                value={filterValidation} 
+                onValueChange={setFilterValidation}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Validation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="valid">Valid Only</SelectItem>
+                  <SelectItem value="invalid">Issues Only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           
@@ -209,13 +263,14 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
           ) : (
             <div className="text-center py-12 border rounded-md animate-in fade-in-80">
               <p className="text-muted-foreground">No leads found with the current filters.</p>
-              {(searchTerm || filterPriority !== 'all' || filterSource !== 'all') && (
+              {(searchTerm || filterPriority !== 'all' || filterSource !== 'all' || filterValidation !== 'all') && (
                 <Button 
                   variant="link" 
                   onClick={() => {
                     setSearchTerm('');
                     setFilterPriority('all');
                     setFilterSource('all');
+                    setFilterValidation('all');
                     navigate('/leads');
                   }}
                   className="transition-all duration-300"
