@@ -1,73 +1,53 @@
-# Welcome to your Lovable project
+# Lead AI Harvest - Intelligent Lead Generation Tool
 
-## Project info
+![Project Screenshot](https://github.com/user-attachments/assets/fe5b9646-5ba8-4bb1-a14b-77b6830567f2)
 
-**URL**: https://lovable.dev/projects/12ca6fa5-3444-4363-a94d-969de96a6f23
+An AI-powered lead generation and management system that scrapes, validates, and exports high-quality business leads.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Multi-Source Lead Generation**: LinkedIn, Crunchbase, AngelList, Twitter
+- **AI Validation**: Priority scoring (1-10) using OpenAI
+- **Smart Filtering**: By priority, source, and risk flags
+- **Export Options**: CSV, Excel, and PDF formats
+- **Audit Logging**: Track all system activities
+- **Responsive UI**: Works on desktop and mobile
 
-**Use Lovable**
+## Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/12ca6fa5-3444-4363-a94d-969de96a6f23) and start prompting.
+- **Frontend**: React, TypeScript, Vite, Tailwind CSS
+- **UI Components**: shadcn-ui
+- **Backend**: FastAPI (Python), OpenAI API
+- **Database**: Supabase (PostgreSQL)
+- **Exporting Tools**: exceljs, react-pdf
 
-Changes made via Lovable will be committed automatically to this repo.
+## Dataset
 
-**Use your preferred IDE**
+Sample lead data:
+- [`leads_sample.pdf`](./data/leads_sample.pdf)
+- [`leads_sample1.xlsx`](./data/leads_sample1.xlsx)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+> **Note:** Replace these with your actual dataset paths if different.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Setup Instructions
 
-Follow these steps:
+### Prerequisites
+- Node.js v18+
+- Python 3.10+
+- OpenAI API key
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Installation
+```bash
+# Clone repository
+git clone https://github.com/yourusername/lead-ai-harvest.git
+cd lead-ai-harvest
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Configure environment
+cp .env.example .env
+# Add your OpenAI API key in .env
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Run development server
 npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/12ca6fa5-3444-4363-a94d-969de96a6f23) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes it is!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
