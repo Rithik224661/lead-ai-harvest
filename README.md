@@ -36,6 +36,10 @@ Sample lead data:
 - Node.js v18+
 - Python 3.10+
 - OpenAI API key
+  
+## 🧪 Demo
+
+[Run Demo in Jupyter Notebook](notebooks/demo.ipynb)
 
 ### Installation
 ```bash
