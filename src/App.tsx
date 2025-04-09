@@ -11,6 +11,9 @@ import Leads from "./pages/Leads";
 import Settings from "./pages/Settings";
 import Export from "./pages/Export";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 function App() {
   const [queryClient] = useState(() => new QueryClient());
@@ -21,15 +24,37 @@ function App() {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/search" element={<FindLeads />} />
-            <Route path="/leads" element={<Leads />} />
-            <Route path="/export" element={<Export />} />
-            <Route path="/settings" element={<Settings />} />
-            {/* Additional routes would go here */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              } />
+              <Route path="/search" element={
+                <ProtectedRoute>
+                  <FindLeads />
+                </ProtectedRoute>
+              } />
+              <Route path="/leads" element={
+                <ProtectedRoute>
+                  <Leads />
+                </ProtectedRoute>
+              } />
+              <Route path="/export" element={
+                <ProtectedRoute>
+                  <Export />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger } from './ui/sidebar';
-import { Database, Download, FileSpreadsheet, Home, Search, Settings, UserRound, Users } from 'lucide-react';
+import { Database, Download, FileSpreadsheet, Home, Search, Settings, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UserProfile } from './UserProfile';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,7 +19,7 @@ export const Layout = ({ children }: LayoutProps) => {
             <SidebarTrigger />
             <h1 className="text-xl font-semibold ml-4">Lead AI Harvest</h1>
             <div className="ml-auto flex items-center space-x-4">
-              <UserRound className="h-5 w-5 text-muted-foreground" />
+              <UserProfile />
             </div>
           </div>
           <main className="flex-1 overflow-auto">
