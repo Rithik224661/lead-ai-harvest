@@ -24,14 +24,17 @@ export const addUserIdToData = async <T extends Record<string, any>>(data: T): P
  * @param table The table to query
  * @returns A query builder with the user_id filter applied
  */
-export const createUserQuery = async <T extends 'leads' | 'audit_logs' | 'settings'>(table: T) => {
+export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings') => {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session?.user) {
     throw new Error('User must be logged in');
   }
   
-  return supabase
+  // Using type assertion to help TypeScript understand this is a valid table name
+  const query = supabase
     .from(table)
-    .select()
-    .eq('user_id', sessionData.session.user.id);
+    .select();
+    
+  // Apply the filter after creating the query
+  return query.eq('user_id', sessionData.session.user.id);
 };
