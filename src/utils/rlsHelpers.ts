@@ -21,7 +21,7 @@ export const addUserIdToData = async <T extends Record<string, any>>(data: T): P
 
 /**
  * Creates an RLS-friendly query by adding user_id filter
- * Uses explicit return types to avoid TypeScript recursion issues
+ * Uses explicit type definitions to solve recursion issues
  */
 export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings') => {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -31,14 +31,15 @@ export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings'
   
   const userId = sessionData.session.user.id;
   
-  // Handle each table type explicitly to avoid type recursion
+  // Use "any" return type to break the type recursion chain
+  // Each case handles a specific table explicitly
   switch (table) {
     case 'leads':
-      return supabase.from('leads').select().eq('user_id', userId);
+      return supabase.from('leads').select('*').eq('user_id', userId) as any;
     case 'audit_logs':
-      return supabase.from('audit_logs').select().eq('user_id', userId);
+      return supabase.from('audit_logs').select('*').eq('user_id', userId) as any;
     case 'settings':
-      return supabase.from('settings').select().eq('user_id', userId);
+      return supabase.from('settings').select('*').eq('user_id', userId) as any;
     default:
       throw new Error(`Invalid table: ${table}`);
   }
