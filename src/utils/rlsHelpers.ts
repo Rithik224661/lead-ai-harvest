@@ -30,17 +30,28 @@ export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings'
     throw new Error('User must be logged in');
   }
   
-  // Create base query
-  let query;
-  
+  // Create specific queries to avoid TypeScript depth issues
   if (table === 'leads') {
-    query = supabase.from('leads').select();
-  } else if (table === 'audit_logs') {
-    query = supabase.from('audit_logs').select();
-  } else if (table === 'settings') {
-    query = supabase.from('settings').select();
+    return supabase
+      .from('leads')
+      .select()
+      .eq('user_id', sessionData.session.user.id);
+  } 
+  
+  if (table === 'audit_logs') {
+    return supabase
+      .from('audit_logs')
+      .select()
+      .eq('user_id', sessionData.session.user.id);
+  } 
+  
+  if (table === 'settings') {
+    return supabase
+      .from('settings')
+      .select()
+      .eq('user_id', sessionData.session.user.id);
   }
   
-  // Apply user filter
-  return query.eq('user_id', sessionData.session.user.id);
+  // Should never reach here due to type constraints
+  throw new Error(`Invalid table: ${table}`);
 };

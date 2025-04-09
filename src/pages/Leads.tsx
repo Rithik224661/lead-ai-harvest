@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRealtime } from '@/hooks/useRealtime';
 import { AILeadValidator } from '@/components/AILeadValidator';
 import { FilterCriteria, AdvancedFilter } from '@/components/AdvancedFilter';
+import { addUserIdToData } from '@/utils/rlsHelpers';
 
 const Leads = () => {
   const [searchParams] = useSearchParams();
@@ -23,7 +24,7 @@ const Leads = () => {
   
   // Apply filters and validation to the realtime leads
   useEffect(() => {
-    if (realtimeLeads === null) return;
+    if (!realtimeLeads) return;
 
     // Apply any validations needed
     const processedLeads = realtimeLeads.map((lead: any) => {
@@ -53,6 +54,41 @@ const Leads = () => {
     // The leads will be updated automatically through the realtime subscription
     toast.success('Lead validation complete');
   };
+  
+  // Handle saving leads to the database
+  const handleSaveLeads = async (newLeads: Lead[]) => {
+    try {
+      // Prepare leads with user_id for RLS
+      const preparedLeads = await Promise.all(
+        newLeads.map(async (lead) => {
+          // Add user_id to each lead for RLS
+          return await addUserIdToData({
+            name: lead.name,
+            job_title: lead.jobTitle,
+            company: lead.company,
+            email: lead.email,
+            phone: lead.phone,
+            priority: lead.priority,
+            source: lead.source,
+            ai_score: lead.aiScore,
+            validation_issues: lead.validationIssues
+          });
+        })
+      );
+      
+      // Insert leads to the database
+      const { data, error } = await supabase.from('leads').insert(preparedLeads);
+      
+      if (error) throw error;
+      
+      toast.success(`${newLeads.length} leads added to My Leads`);
+      return true;
+    } catch (error) {
+      console.error('Error saving leads:', error);
+      toast.error('Failed to save leads');
+      return false;
+    }
+  };
 
   if (error) {
     toast.error('Error loading leads data');
@@ -68,6 +104,7 @@ const Leads = () => {
               leads={leads} 
               priorityFilter={priority} 
               isLoading={isLoading || realtimeLoading} 
+              onSaveLeads={handleSaveLeads}
             />
           </div>
           <div className="space-y-6">

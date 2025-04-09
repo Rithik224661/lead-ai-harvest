@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
+import { addUserIdToData, createUserQuery } from '@/utils/rlsHelpers';
 
 type SupabaseEvent = 'INSERT' | 'UPDATE' | 'DELETE';
 type TableName = 'leads' | 'audit_logs' | 'settings';
@@ -17,11 +18,13 @@ export function useRealtime<T>(
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // Fetch initial data
+    // Fetch initial data with RLS applied
     const fetchData = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase.from(table).select('*');
+        // Use createUserQuery to ensure RLS is properly applied
+        const query = await createUserQuery(table);
+        const { data, error } = await query;
         
         if (error) throw error;
         

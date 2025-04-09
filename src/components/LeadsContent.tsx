@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -5,7 +6,7 @@ import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
-import { Download, Filter, Search, Trash2, CheckSquare, FileDown, AlertTriangle } from 'lucide-react';
+import { Download, Filter, Search, Trash2, CheckSquare, FileDown, AlertTriangle, Save } from 'lucide-react';
 import { Lead } from './LeadCard';
 import { LeadTable } from './LeadTable';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,7 @@ interface LeadsContentProps {
   isLoading?: boolean;
   filters?: FilterCriteria[];
   onApplyFilters?: (newFilters: FilterCriteria[]) => void;
+  onSaveLeads?: (selectedLeads: Lead[]) => Promise<boolean>;
 }
 
 export function LeadsContent({ 
@@ -27,7 +29,8 @@ export function LeadsContent({
   priorityFilter, 
   isLoading = false,
   filters = [],
-  onApplyFilters 
+  onApplyFilters,
+  onSaveLeads 
 }: LeadsContentProps) {
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,15 +107,28 @@ export function LeadsContent({
     }
     
     const updatedLeads = leads.filter(lead => !selectedLeads.some(l => l.id === lead.id));
-    localStorage.setItem('storedLeads', JSON.stringify(updatedLeads));
     
     auditService.addLog('DELETE', { leads_count: selectedLeads.length });
     
     toast.success(`Deleted ${selectedLeads.length} leads`);
     
     setSelectedLeads([]);
-    
-    window.location.reload();
+  };
+
+  const handleSaveToMyLeads = async () => {
+    if (selectedLeads.length === 0) {
+      toast.error('Please select leads to save');
+      return;
+    }
+
+    if (onSaveLeads) {
+      const success = await onSaveLeads(selectedLeads);
+      if (success) {
+        setSelectedLeads([]);
+      }
+    } else {
+      toast.error('Save functionality not available');
+    }
   };
 
   const getSourceOptions = () => {
@@ -133,6 +149,16 @@ export function LeadsContent({
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">My Leads</h1>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleSaveToMyLeads}
+            disabled={selectedLeads.length === 0}
+            className="flex items-center gap-1 transition-all duration-300 hover:bg-primary/10 hover:text-primary"
+          >
+            <Save className="h-4 w-4" />
+            Save to My Leads ({selectedLeads.length})
+          </Button>
           <Button 
             variant="outline" 
             size="sm"

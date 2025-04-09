@@ -12,6 +12,8 @@ import { LeadTable } from './LeadTable';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { validateLeadsWithAI } from '@/services/aiLeadService';
+import { supabase } from '@/integrations/supabase/client';
+import { addUserIdToData } from '@/utils/rlsHelpers';
 
 export function LeadDashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -20,22 +22,47 @@ export function LeadDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [validationCriteria, setValidationCriteria] = useState('CTO OR VP OR Founder OR Director');
   const [validationProgress, setValidationProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load leads from localStorage
-    const storedLeads = localStorage.getItem('storedLeads');
-    if (storedLeads) {
+    // Fetch leads from Supabase
+    const fetchLeads = async () => {
       try {
-        setLeads(JSON.parse(storedLeads));
+        setIsLoading(true);
+        const { data, error } = await supabase.from('leads').select('*');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Transform to expected Lead format if needed
+          const formattedLeads = data.map(lead => ({
+            id: lead.id,
+            name: lead.name,
+            jobTitle: lead.job_title,
+            company: lead.company,
+            email: lead.email,
+            phone: lead.phone,
+            priority: lead.priority || 'medium',
+            source: lead.source || 'imported',
+            aiScore: lead.ai_score,
+            validationIssues: lead.validation_issues
+          }));
+          
+          setLeads(formattedLeads);
+        } else {
+          // Fallback to mock leads if no data from supabase
+          setLeads(mockLeads);
+        }
       } catch (e) {
-        console.error('Failed to parse leads from localStorage', e);
+        console.error('Failed to fetch leads from Supabase', e);
         setLeads(mockLeads);
+      } finally {
+        setIsLoading(false);
       }
-    } else {
-      setLeads(mockLeads);
-      localStorage.setItem('storedLeads', JSON.stringify(mockLeads));
-    }
+    };
+    
+    fetchLeads();
   }, []);
 
   const highPriorityLeads = leads.filter(lead => lead.priority === 'high');
@@ -144,11 +171,43 @@ export function LeadDashboard() {
   const handleNavigateToFilter = (priority: Lead['priority']) => {
     navigate(`/leads?priority=${priority}`);
   };
+  
+  const handleSaveToDatabase = async () => {
+    try {
+      // Prepare leads with user_id for RLS
+      const preparedLeads = await Promise.all(
+        leads.map(async (lead) => {
+          // Add user_id to each lead for RLS
+          return await addUserIdToData({
+            name: lead.name,
+            job_title: lead.jobTitle,
+            company: lead.company,
+            email: lead.email,
+            phone: lead.phone,
+            priority: lead.priority,
+            source: lead.source,
+            ai_score: lead.aiScore,
+            validation_issues: lead.validationIssues
+          });
+        })
+      );
+      
+      // Insert leads to the database
+      const { data, error } = await supabase.from('leads').insert(preparedLeads);
+      
+      if (error) throw error;
+      
+      toast.success(`${leads.length} leads added to database`);
+    } catch (error) {
+      console.error('Error saving leads:', error);
+      toast.error('Failed to save leads to database');
+    }
+  };
 
   const filteredLeads = leads.filter(lead => 
     lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.company.toLowerCase().includes(searchTerm.toLowerCase())
+    lead.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lead.company?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
