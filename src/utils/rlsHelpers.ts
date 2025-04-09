@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types"; 
 
 /**
  * Adds the user_id to data being inserted to ensure proper RLS policy enforcement
@@ -23,7 +24,7 @@ export const addUserIdToData = async <T extends Record<string, any>>(data: T): P
  * @param table The table to query
  * @returns A query builder with the user_id filter applied
  */
-export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings') => {
+export const createUserQuery = async <T extends 'leads' | 'audit_logs' | 'settings'>(table: T) => {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session?.user) {
     throw new Error('User must be logged in');
