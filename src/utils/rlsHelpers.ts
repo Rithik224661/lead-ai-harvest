@@ -19,9 +19,13 @@ export const addUserIdToData = async <T extends Record<string, any>>(data: T): P
   };
 };
 
+// Define explicit return types for each table query to prevent type recursion
+type LeadsQueryResult = Awaited<ReturnType<typeof supabase.from<'leads'>>['select']>
+type AuditLogsQueryResult = Awaited<ReturnType<typeof supabase.from<'audit_logs'>>['select']>
+type SettingsQueryResult = Awaited<ReturnType<typeof supabase.from<'settings'>>['select']>
+
 /**
  * Creates an RLS-friendly query by adding user_id filter
- * Breaking type recursion by using concrete return types
  */
 export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings') => {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -31,22 +35,21 @@ export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings'
   
   const userId = sessionData.session.user.id;
   
-  // Create queries with explicit return types to break recursion
   if (table === 'leads') {
     return supabase
-      .from('leads')
+      .from(table)
       .select('*')
       .eq('user_id', userId);
   } 
   else if (table === 'audit_logs') {
     return supabase
-      .from('audit_logs')
+      .from(table)
       .select('*')
       .eq('user_id', userId);
   } 
   else if (table === 'settings') {
     return supabase
-      .from('settings')
+      .from(table)
       .select('*')
       .eq('user_id', userId);
   } 
