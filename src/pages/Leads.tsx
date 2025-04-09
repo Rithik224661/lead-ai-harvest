@@ -23,7 +23,7 @@ const Leads = () => {
   
   // Apply filters and validation to the realtime leads
   useEffect(() => {
-    if (realtimeLoads === null) return;
+    if (realtimeLeads === null) return;
 
     // Apply any validations needed
     const processedLeads = realtimeLeads.map((lead: any) => {
@@ -68,8 +68,6 @@ const Leads = () => {
               leads={leads} 
               priorityFilter={priority} 
               isLoading={isLoading || realtimeLoading} 
-              filters={filters}
-              onApplyFilters={handleApplyFilters}
             />
           </div>
           <div className="space-y-6">

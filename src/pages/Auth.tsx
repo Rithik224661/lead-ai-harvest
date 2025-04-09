@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Database } from '@/icons/Database';
+import { Database as DatabaseIcon } from 'lucide-react';
 import { User } from 'lucide-react';
 
 const Auth = () => {
@@ -62,7 +62,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-6">
-            <Database className="h-10 w-10 text-teal-700" />
+            <DatabaseIcon className="h-10 w-10 text-teal-700" />
             <span className="ml-2 text-2xl font-bold">Lead AI Harvest</span>
           </div>
           <CardTitle className="text-2xl text-center">Welcome</CardTitle>

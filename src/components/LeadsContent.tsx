@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -13,14 +12,23 @@ import { useNavigate } from 'react-router-dom';
 import { Skeleton } from './ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { auditService } from '@/utils/auditService';
+import { FilterCriteria } from '@/components/AdvancedFilter';
 
 interface LeadsContentProps {
   leads: Lead[];
   priorityFilter: string | null;
   isLoading?: boolean;
+  filters?: FilterCriteria[];
+  onApplyFilters?: (newFilters: FilterCriteria[]) => void;
 }
 
-export function LeadsContent({ leads, priorityFilter, isLoading = false }: LeadsContentProps) {
+export function LeadsContent({ 
+  leads, 
+  priorityFilter, 
+  isLoading = false,
+  filters = [],
+  onApplyFilters 
+}: LeadsContentProps) {
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState(priorityFilter || 'all');
@@ -28,30 +36,37 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
   const [filterValidation, setFilterValidation] = useState('all');
   const navigate = useNavigate();
   
-  // Update filter when URL parameter changes
   useEffect(() => {
     if (priorityFilter) {
       setFilterPriority(priorityFilter);
     }
   }, [priorityFilter]);
 
-  // Filter leads based on search term and filters
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = searchTerm === '' || 
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.company.toLowerCase().includes(searchTerm.toLowerCase());
+      lead.jobTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.company?.toLowerCase().includes(searchTerm.toLowerCase());
       
     const matchesPriority = filterPriority === 'all' || lead.priority === filterPriority;
     const matchesSource = filterSource === 'all' || lead.source === filterSource;
     
-    // Handle validation filter
     const hasValidationIssues = lead.validationIssues && lead.validationIssues.length > 0;
     const matchesValidation = filterValidation === 'all' || 
       (filterValidation === 'valid' && !hasValidationIssues) ||
       (filterValidation === 'invalid' && hasValidationIssues);
     
-    return matchesSearch && matchesPriority && matchesSource && matchesValidation;
+    const passesExternalFilters = filters.length === 0 || filters.every(filter => {
+      const value = lead[filter.field as keyof Lead];
+      if (typeof value === 'string') {
+        return filter.operator === 'contains' ? 
+          value.toLowerCase().includes(filter.value.toLowerCase()) : 
+          value.toLowerCase() === filter.value.toLowerCase();
+      }
+      return true;
+    });
+    
+    return matchesSearch && matchesPriority && matchesSource && matchesValidation && passesExternalFilters;
   });
 
   const handleToggleSelect = (lead: Lead) => {
@@ -77,7 +92,6 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
       return;
     }
 
-    // Log the export activity using audit service
     auditService.logExport('UI_Navigation', selectedLeads.length);
     
     navigate('/export', { state: { selectedLeads: selectedLeads.map(l => l.id) } });
@@ -89,19 +103,15 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
       return;
     }
     
-    // In a real app, this would call an API to delete the leads
     const updatedLeads = leads.filter(lead => !selectedLeads.some(l => l.id === lead.id));
     localStorage.setItem('storedLeads', JSON.stringify(updatedLeads));
     
-    // Log the delete operation
     auditService.addLog('DELETE', { leads_count: selectedLeads.length });
     
     toast.success(`Deleted ${selectedLeads.length} leads`);
     
-    // Reset selected leads
     setSelectedLeads([]);
     
-    // Reload page to refresh the leads list
     window.location.reload();
   };
 
@@ -114,7 +124,6 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
     ));
   };
 
-  // Count leads with validation issues
   const leadsWithIssues = leads.filter(lead => 
     lead.validationIssues && lead.validationIssues.length > 0
   ).length;
@@ -198,7 +207,6 @@ export function LeadsContent({ leads, priorityFilter, isLoading = false }: Leads
                 value={filterPriority} 
                 onValueChange={(value) => {
                   setFilterPriority(value);
-                  // Update the URL if the filter changes
                   if (value === 'all') {
                     navigate('/leads');
                   } else {

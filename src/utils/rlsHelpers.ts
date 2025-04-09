@@ -23,7 +23,7 @@ export const addUserIdToData = async <T extends Record<string, any>>(data: T): P
  * @param table The table to query
  * @returns A query builder with the user_id filter applied
  */
-export const createUserQuery = async (table: string) => {
+export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings') => {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session?.user) {
     throw new Error('User must be logged in');
