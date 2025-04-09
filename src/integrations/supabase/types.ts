@@ -9,7 +9,126 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          leads_count: number | null
+          proxy_used: string | null
+          source: string | null
+          timestamp: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          leads_count?: number | null
+          proxy_used?: string | null
+          source?: string | null
+          timestamp?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          leads_count?: number | null
+          proxy_used?: string | null
+          source?: string | null
+          timestamp?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          ai_score: number | null
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          job_title: string | null
+          name: string
+          phone: string | null
+          priority: string | null
+          source: string | null
+          updated_at: string
+          validation_issues: Json | null
+        }
+        Insert: {
+          ai_score?: number | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          job_title?: string | null
+          name: string
+          phone?: string | null
+          priority?: string | null
+          source?: string | null
+          updated_at?: string
+          validation_issues?: Json | null
+        }
+        Update: {
+          ai_score?: number | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          job_title?: string | null
+          name?: string
+          phone?: string | null
+          priority?: string | null
+          source?: string | null
+          updated_at?: string
+          validation_issues?: Json | null
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string
+          dark_mode: boolean | null
+          enable_animations: boolean | null
+          id: string
+          open_ai_key: string | null
+          request_delay: number | null
+          respect_robots_txt: boolean | null
+          updated_at: string
+          use_proxies: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dark_mode?: boolean | null
+          enable_animations?: boolean | null
+          id?: string
+          open_ai_key?: string | null
+          request_delay?: number | null
+          respect_robots_txt?: boolean | null
+          updated_at?: string
+          use_proxies?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dark_mode?: boolean | null
+          enable_animations?: boolean | null
+          id?: string
+          open_ai_key?: string | null
+          request_delay?: number | null
+          respect_robots_txt?: boolean | null
+          updated_at?: string
+          use_proxies?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
