@@ -20,26 +20,61 @@ export const addUserIdToData = async <T extends Record<string, any>>(data: T): P
 };
 
 /**
- * Creates an RLS-friendly query by adding user_id filter
+ * Gets the current user ID from the session
+ * @returns The current user ID
  */
-export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings') => {
+export const getCurrentUserId = async (): Promise<string> => {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session?.user) {
     throw new Error('User must be logged in');
   }
+  return sessionData.session.user.id;
+};
+
+/**
+ * Fetches leads with RLS applied
+ */
+export const fetchUserLeads = async () => {
+  const userId = await getCurrentUserId();
+  return supabase.from('leads').select('*').eq('user_id', userId);
+};
+
+/**
+ * Fetches audit logs with RLS applied
+ */
+export const fetchUserAuditLogs = async () => {
+  const userId = await getCurrentUserId();
+  return supabase.from('audit_logs').select('*').eq('user_id', userId);
+};
+
+/**
+ * Fetches settings with RLS applied
+ */
+export const fetchUserSettings = async () => {
+  const userId = await getCurrentUserId();
+  return supabase.from('settings').select('*').eq('user_id', userId);
+};
+
+/**
+ * Map table names to their fetch functions
+ */
+type TableFetchFunctions = {
+  leads: typeof fetchUserLeads;
+  audit_logs: typeof fetchUserAuditLogs;
+  settings: typeof fetchUserSettings;
+};
+
+/**
+ * Creates an RLS-friendly query for the specified table
+ */
+export const createUserQuery = async (table: keyof TableFetchFunctions) => {
+  // Map table names to their corresponding fetch functions
+  const fetchFunctions: TableFetchFunctions = {
+    leads: fetchUserLeads,
+    audit_logs: fetchUserAuditLogs,
+    settings: fetchUserSettings
+  };
   
-  const userId = sessionData.session.user.id;
-  
-  // Use explicit return types to avoid TypeScript recursion issues
-  switch (table) {
-    case 'leads':
-      return supabase.from('leads').select('*').eq('user_id', userId);
-    case 'audit_logs':
-      return supabase.from('audit_logs').select('*').eq('user_id', userId);
-    case 'settings':
-      return supabase.from('settings').select('*').eq('user_id', userId);
-    default:
-      // This should never happen due to the type constraint on the parameter
-      throw new Error(`Invalid table: ${table}`);
-  }
+  // Call the appropriate fetch function
+  return await fetchFunctions[table]();
 };
