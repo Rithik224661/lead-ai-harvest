@@ -30,11 +30,17 @@ export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings'
     throw new Error('User must be logged in');
   }
   
-  // Using type assertion to help TypeScript understand this is a valid table name
-  const query = supabase
-    .from(table)
-    .select();
-    
-  // Apply the filter after creating the query
+  // Create base query
+  let query;
+  
+  if (table === 'leads') {
+    query = supabase.from('leads').select();
+  } else if (table === 'audit_logs') {
+    query = supabase.from('audit_logs').select();
+  } else if (table === 'settings') {
+    query = supabase.from('settings').select();
+  }
+  
+  // Apply user filter
   return query.eq('user_id', sessionData.session.user.id);
 };
