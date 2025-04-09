@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -35,7 +34,7 @@ export function LeadDashboard() {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          // Transform to expected Lead format if needed
+          // Transform to expected Lead format and ensure priority is the correct type
           const formattedLeads = data.map(lead => ({
             id: lead.id,
             name: lead.name,
@@ -43,7 +42,10 @@ export function LeadDashboard() {
             company: lead.company,
             email: lead.email,
             phone: lead.phone,
-            priority: lead.priority || 'medium',
+            // Ensure priority is one of the allowed values
+            priority: (lead.priority === 'high' || lead.priority === 'medium' || lead.priority === 'low') 
+              ? lead.priority as 'high' | 'medium' | 'low'
+              : 'medium', // Default to medium if value is unexpected
             source: lead.source || 'imported',
             aiScore: lead.ai_score,
             validationIssues: lead.validation_issues
