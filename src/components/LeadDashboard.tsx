@@ -25,7 +25,6 @@ export function LeadDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch leads from Supabase
     const fetchLeads = async () => {
       try {
         setIsLoading(true);
@@ -34,26 +33,45 @@ export function LeadDashboard() {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          // Transform to expected Lead format and ensure priority is the correct type
-          const formattedLeads = data.map(lead => ({
-            id: lead.id,
-            name: lead.name,
-            jobTitle: lead.job_title,
-            company: lead.company,
-            email: lead.email,
-            phone: lead.phone,
-            // Ensure priority is one of the allowed values
-            priority: (lead.priority === 'high' || lead.priority === 'medium' || lead.priority === 'low') 
-              ? lead.priority as 'high' | 'medium' | 'low'
-              : 'medium', // Default to medium if value is unexpected
-            source: lead.source || 'imported',
-            aiScore: lead.ai_score,
-            validationIssues: lead.validation_issues
-          }));
+          const formattedLeads = data.map(lead => {
+            let typedValidationIssues: { field: string; reason: string }[] = [];
+            
+            if (lead.validation_issues) {
+              if (Array.isArray(lead.validation_issues)) {
+                typedValidationIssues = lead.validation_issues as { field: string; reason: string }[];
+              } else {
+                try {
+                  const parsedIssues = typeof lead.validation_issues === 'string' 
+                    ? JSON.parse(lead.validation_issues) 
+                    : lead.validation_issues;
+                  
+                  if (Array.isArray(parsedIssues)) {
+                    typedValidationIssues = parsedIssues;
+                  }
+                } catch (e) {
+                  console.error('Failed to parse validation issues:', e);
+                }
+              }
+            }
+
+            return {
+              id: lead.id,
+              name: lead.name,
+              jobTitle: lead.job_title,
+              company: lead.company,
+              email: lead.email,
+              phone: lead.phone,
+              priority: (lead.priority === 'high' || lead.priority === 'medium' || lead.priority === 'low') 
+                ? lead.priority as 'high' | 'medium' | 'low'
+                : 'medium',
+              source: lead.source || 'imported',
+              aiScore: lead.ai_score,
+              validationIssues: typedValidationIssues
+            };
+          });
           
           setLeads(formattedLeads);
         } else {
-          // Fallback to mock leads if no data from supabase
           setLeads(mockLeads);
         }
       } catch (e) {
@@ -107,7 +125,6 @@ export function LeadDashboard() {
     setIsValidating(true);
     setValidationProgress(0);
     
-    // Simulate API call with progress updates
     const interval = setInterval(() => {
       setValidationProgress(prev => {
         const newProgress = prev + Math.random() * 10;
@@ -116,10 +133,8 @@ export function LeadDashboard() {
     }, 200);
     
     try {
-      // Use the AI service to validate leads
       const validatedLeads = await validateLeadsWithAI(leads, validationCriteria);
       
-      // Store validated leads
       setLeads(validatedLeads);
       localStorage.setItem('storedLeads', JSON.stringify(validatedLeads));
       
@@ -176,10 +191,8 @@ export function LeadDashboard() {
   
   const handleSaveToDatabase = async () => {
     try {
-      // Prepare leads with user_id for RLS
       const preparedLeads = await Promise.all(
         leads.map(async (lead) => {
-          // Add user_id to each lead for RLS
           return await addUserIdToData({
             name: lead.name,
             job_title: lead.jobTitle,
@@ -189,12 +202,11 @@ export function LeadDashboard() {
             priority: lead.priority,
             source: lead.source,
             ai_score: lead.aiScore,
-            validation_issues: lead.validationIssues
+            validation_issues: lead.validationIssues || []
           });
         })
       );
       
-      // Insert leads to the database
       const { data, error } = await supabase.from('leads').insert(preparedLeads);
       
       if (error) throw error;

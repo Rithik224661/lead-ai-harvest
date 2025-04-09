@@ -21,7 +21,7 @@ export const addUserIdToData = async <T extends Record<string, any>>(data: T): P
 
 /**
  * Creates an RLS-friendly query by adding user_id filter
- * This uses a more direct approach to avoid TypeScript type recursion issues
+ * This uses a direct approach without complex type inference to avoid TS issues
  */
 export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings') => {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -31,16 +31,15 @@ export const createUserQuery = async (table: 'leads' | 'audit_logs' | 'settings'
   
   const userId = sessionData.session.user.id;
   
-  // Create type-safe queries without complex type inference
-  switch (table) {
-    case 'leads':
-      return supabase.from('leads').select().eq('user_id', userId);
-    case 'audit_logs':
-      return supabase.from('audit_logs').select().eq('user_id', userId);
-    case 'settings':
-      return supabase.from('settings').select().eq('user_id', userId);
-    default:
-      // This should never be reached due to TypeScript's exhaustive checking
-      throw new Error(`Invalid table: ${table}`);
+  // Use simple if statements to avoid TypeScript recursion issues
+  if (table === 'leads') {
+    return supabase.from('leads').select().eq('user_id', userId);
+  } else if (table === 'audit_logs') {
+    return supabase.from('audit_logs').select().eq('user_id', userId);
+  } else if (table === 'settings') {
+    return supabase.from('settings').select().eq('user_id', userId);
   }
+  
+  // This should never be reached due to TypeScript's type checking
+  throw new Error(`Invalid table: ${table}`);
 };
